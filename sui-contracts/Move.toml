@@ -1,0 +1,8 @@
+[package]
+name = "jimmys_sui_shop"
+edition = "2024.beta"
+
+[dependencies]
+
+[addresses]
+jimmys_sui_shop = "0x0"
