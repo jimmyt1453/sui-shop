@@ -376,7 +376,8 @@ function MerchantForm({
       setTxDigest(digest);
       setStatus('ok');
       setInput('');
-      refetch();
+      // Delay refetch — RPC needs ~2s to index the updated on-chain state
+      setTimeout(refetch, 2500);
     } catch (err: any) {
       setErrMsg(err.message ?? 'Failed');
       setStatus('error');

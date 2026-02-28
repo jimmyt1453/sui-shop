@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useCurrentAccount } from '@mysten/dapp-kit-react';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
-import { PACKAGE_ID, NETWORK, GRPC_URLS } from '../config/constants';
+import { ORIGINAL_PACKAGE_ID, NETWORK, GRPC_URLS } from '../config/constants';
 import type { OrderReceipt } from '../types';
 
 const client = new SuiGrpcClient({ network: NETWORK, baseUrl: GRPC_URLS[NETWORK] });
@@ -22,7 +22,7 @@ export function useOrders() {
     setError(null);
 
     try {
-      const receiptType = `${PACKAGE_ID}::shop::OrderReceipt`;
+      const receiptType = `${ORIGINAL_PACKAGE_ID}::shop::OrderReceipt`;
 
       const result = await client.listOwnedObjects({
         owner: account.address,

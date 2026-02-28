@@ -23,15 +23,32 @@ function decodeBytes(val: number[] | string): string {
 async function initCursor(): Promise<void> {
   const client = getClient();
   try {
+    // Fetch the last 20 events descending to pre-populate history
     const result = await client.queryEvents({
       query: { MoveEventType: EVENT_TYPE },
-      limit: 1,
+      limit: 20,
       order: 'descending',
     });
+
     if (result.data.length > 0) {
+      // Add to recentOrders in newest-first order (already descending)
+      for (const event of result.data) {
+        const fields = event.parsedJson as Record<string, any>;
+        recentOrders.push({
+          orderNumber: Number(fields?.order_number ?? 0),
+          productName: decodeBytes(fields?.product_name ?? ''),
+          price: Number(fields?.price ?? 0),
+          timestamp: Number(fields?.timestamp ?? 0),
+          buyer: String(fields?.buyer ?? ''),
+          txDigest: event.id.txDigest,
+        });
+      }
+      // Cursor = most recent event — ongoing polls only catch new events
       cursor = result.data[0].id as { txDigest: string; eventSeq: string };
+      console.log(`[orderWatcher] Backfilled ${result.data.length} orders, cursor set to latest`);
+    } else {
+      console.log('[orderWatcher] No existing events found');
     }
-    console.log('[orderWatcher] Cursor initialized:', cursor ?? '(no events yet)');
   } catch (err: any) {
     console.error('[orderWatcher] initCursor error:', err.message);
   }
