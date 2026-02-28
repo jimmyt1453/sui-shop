@@ -5,6 +5,7 @@ import { getKeypair, getClient, getAgentAddress } from './sui-client.js';
 import {
   PRODUCTS,
   PACKAGE_ID,
+  ORIGINAL_PACKAGE_ID,
   SHOP_OBJECT_ID,
   CLOCK_OBJECT_ID,
   getUsdcType,
@@ -222,7 +223,7 @@ const orderHistoryTool = tool(
     try {
       const client = getClient();
       const address = getAgentAddress();
-      const receiptType = `${PACKAGE_ID}::shop::OrderReceipt`;
+      const receiptType = `${ORIGINAL_PACKAGE_ID}::shop::OrderReceipt`;
 
       const result = await client.getOwnedObjects({
         owner: address,
