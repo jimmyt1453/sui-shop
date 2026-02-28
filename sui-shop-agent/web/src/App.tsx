@@ -1,5 +1,6 @@
 import { ChatWindow } from './components/ChatWindow';
 import { StatusBar } from './components/StatusBar';
+import { BalanceWidget } from './components/BalanceWidget';
 
 function App() {
   return (
@@ -11,7 +12,10 @@ function App() {
             <span className="text-xl select-none">🤖</span>
             <span className="text-lg font-bold text-white">SUI Shop Agent</span>
           </div>
-          <StatusBar />
+          <div className="flex items-center gap-3">
+            <BalanceWidget />
+            <StatusBar />
+          </div>
         </div>
       </header>
 

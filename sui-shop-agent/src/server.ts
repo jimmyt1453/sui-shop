@@ -22,6 +22,7 @@ import { shopMcpServer } from './tools/shop-tools.js';
 import { getAgentAddress } from './tools/sui-client.js';
 import { NETWORK } from './config.js';
 import { startOrderWatcher, getRecentOrders } from './orderWatcher.js';
+import { startBalanceTracker, getLatestBalance, getBalanceHistory } from './balanceTracker.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -153,6 +154,18 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// ── GET /api/balance ─────────────────────────────────────────────────────────
+app.get('/api/balance', (_req, res) => {
+  const balance = getLatestBalance();
+  if (!balance) { res.json({ ok: false, error: 'Balance not yet sampled' }); return; }
+  res.json({ ok: true, ...balance });
+});
+
+// ── GET /api/balance/history ──────────────────────────────────────────────────
+app.get('/api/balance/history', (_req, res) => {
+  res.json({ ok: true, history: getBalanceHistory() });
+});
+
 // ── GET /api/orders/recent ───────────────────────────────────────────────────
 app.get('/api/orders/recent', (req, res) => {
   const limit = Math.min(Math.max(1, Number(req.query.limit ?? 20)), 100);
@@ -179,4 +192,5 @@ app.listen(PORT, () => {
   }
   console.log('');
   startOrderWatcher(10_000);
+  startBalanceTracker(60_000);
 });
