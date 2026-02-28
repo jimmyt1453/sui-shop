@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
-import { SHOP_OBJECT_ID, NETWORK, GRPC_URLS } from '../config/constants';
+import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import { SHOP_OBJECT_ID, NETWORK, RPC_URLS } from '../config/constants';
 
-const grpc = new SuiGrpcClient({ network: NETWORK, baseUrl: GRPC_URLS[NETWORK] });
+const rpc = new SuiJsonRpcClient({ url: RPC_URLS[NETWORK], network: NETWORK });
 
 export function useMerchantAddress() {
   const [address, setAddress] = useState<string | null>(null);
@@ -13,11 +13,13 @@ export function useMerchantAddress() {
     setLoading(true);
     setError(null);
     try {
-      const shopObj = await grpc.getObject({
-        objectId: SHOP_OBJECT_ID,
-        include: { json: true },
+      const shopObj = await rpc.getObject({
+        id: SHOP_OBJECT_ID,
+        options: { showContent: true },
       });
-      const fields = shopObj.object.json as Record<string, any> | undefined;
+      const fields = (shopObj.data?.content?.dataType === 'moveObject'
+        ? shopObj.data.content.fields
+        : null) as Record<string, any> | null;
       setAddress(String(fields?.merchant_address ?? ''));
     } catch (err: any) {
       setError(err.message ?? 'Failed to load');

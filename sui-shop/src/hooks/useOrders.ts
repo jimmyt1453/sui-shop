@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useCurrentAccount } from '@mysten/dapp-kit-react';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
-import { ORIGINAL_PACKAGE_ID, NETWORK, GRPC_URLS } from '../config/constants';
+import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
+import { ORIGINAL_PACKAGE_ID, NETWORK, RPC_URLS } from '../config/constants';
 import type { OrderReceipt } from '../types';
 
-const client = new SuiGrpcClient({ network: NETWORK, baseUrl: GRPC_URLS[NETWORK] });
+const client = new SuiJsonRpcClient({ url: RPC_URLS[NETWORK], network: NETWORK });
 
 export function useOrders() {
   const account = useCurrentAccount();
@@ -24,20 +24,19 @@ export function useOrders() {
     try {
       const receiptType = `${ORIGINAL_PACKAGE_ID}::shop::OrderReceipt`;
 
-      const result = await client.listOwnedObjects({
+      const result = await client.getOwnedObjects({
         owner: account.address,
-        type: receiptType,
-        include: {
-          json: true,
-        },
+        filter: { StructType: receiptType },
+        options: { showContent: true },
       });
 
       const receipts: OrderReceipt[] = [];
-      for (const obj of result.objects) {
-        if (obj.json) {
-          const fields = obj.json as Record<string, any>;
+      for (const item of result.data) {
+        const content = item.data?.content;
+        if (content?.dataType === 'moveObject') {
+          const fields = content.fields as Record<string, any>;
           receipts.push({
-            id: obj.objectId,
+            id: item.data!.objectId,
             orderNumber: Number(fields.order_number),
             productId: Number(fields.product_id),
             productName: String(fields.product_name || ''),

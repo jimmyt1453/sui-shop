@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import { PACKAGE_ID, SHOP_OBJECT_ID, NETWORK, GRPC_URLS, RPC_URLS } from '../config/constants';
+import { PACKAGE_ID, SHOP_OBJECT_ID, NETWORK, RPC_URLS } from '../config/constants';
 
-const grpc = new SuiGrpcClient({ network: NETWORK, baseUrl: GRPC_URLS[NETWORK] });
 const rpc = new SuiJsonRpcClient({ url: RPC_URLS[NETWORK], network: NETWORK });
 
 export interface OnChainProduct {
@@ -25,12 +23,14 @@ export function useShopProducts() {
     setError(null);
     try {
       // Get shop object to find product_count
-      const shopObj = await grpc.getObject({
-        objectId: SHOP_OBJECT_ID,
-        include: { json: true },
+      const shopObj = await rpc.getObject({
+        id: SHOP_OBJECT_ID,
+        options: { showContent: true },
       });
 
-      const shopFields = shopObj.object.json as Record<string, any> | undefined;
+      const shopFields = (shopObj.data?.content?.dataType === 'moveObject'
+        ? shopObj.data.content.fields
+        : null) as Record<string, any> | null;
       const productCount = Number(shopFields?.product_count ?? 0);
 
       // Fetch each product via dynamic fields
