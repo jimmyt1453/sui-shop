@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useCurrentAccount, useDAppKit } from '@mysten/dapp-kit-react';
 import { ConnectButton } from '@mysten/dapp-kit-react';
 import { useAdminCap } from '../hooks/useAdminCap';
 import { useShopProducts } from '../hooks/useShopProducts';
 import { useMerchantAddress } from '../hooks/useMerchantAddress';
-import { formatUsdc, parseUsdc, NETWORK } from '../config/constants';
+import { formatUsdc, parseUsdc, NETWORK, AGENT_API_URL } from '../config/constants';
 import {
   buildUpdatePrice,
   buildAddProduct,
@@ -73,6 +73,9 @@ export function AdminPage() {
 
       {/* Receiving Address */}
       <MerchantForm adminCapId={adminCapId!} dAppKit={dAppKit} walletAddress={account.address} />
+
+      {/* Recent Orders */}
+      <RecentOrders />
     </div>
   );
 }
@@ -469,6 +472,132 @@ function MerchantForm({
           {status === 'busy' ? 'Updating…' : 'Update receiving address'}
         </button>
       </form>
+    </section>
+  );
+}
+
+// ─── Recent Orders ────────────────────────────────────────────────────────────
+
+interface OrderEvent {
+  orderNumber: number;
+  productName: string;
+  price: number;
+  timestamp: number;
+  buyer: string;
+  txDigest: string;
+}
+
+function RecentOrders() {
+  const [orders, setOrders] = useState<OrderEvent[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastFetched, setLastFetched] = useState<Date | null>(null);
+
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${AGENT_API_URL}/api/orders/recent?limit=50`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setOrders(data.orders ?? []);
+      setLastFetched(new Date());
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to fetch orders');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 10_000);
+    return () => clearInterval(interval);
+  }, [fetchOrders]);
+
+  return (
+    <section className="bg-gray-800 rounded-xl border border-gray-700 p-6">
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h2 className="text-xl font-bold text-white">Recent Orders</h2>
+          <p className="text-gray-500 text-xs mt-0.5">
+            Live feed from on-chain events · refreshes every 10s
+            {lastFetched && (
+              <span className="ml-2 text-gray-600">
+                Last updated {lastFetched.toLocaleTimeString()}
+              </span>
+            )}
+          </p>
+        </div>
+        <button
+          onClick={fetchOrders}
+          disabled={loading}
+          className="text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50 cursor-pointer"
+        >
+          {loading ? 'Refreshing…' : 'Refresh'}
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-red-900/30 border border-red-700 rounded-lg px-4 py-3 mb-4">
+          <p className="text-red-400 text-sm">
+            Could not reach agent server — is it running at{' '}
+            <span className="font-mono">{AGENT_API_URL}</span>?
+          </p>
+          <p className="text-red-500 text-xs mt-1">{error}</p>
+        </div>
+      )}
+
+      {!error && orders.length === 0 && !loading && (
+        <p className="text-gray-500 text-sm">No orders recorded yet.</p>
+      )}
+
+      {orders.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-500 border-b border-gray-700">
+                <th className="pb-2 pr-4 font-medium">#</th>
+                <th className="pb-2 pr-4 font-medium">Product</th>
+                <th className="pb-2 pr-4 font-medium">Price</th>
+                <th className="pb-2 pr-4 font-medium">Buyer</th>
+                <th className="pb-2 pr-4 font-medium">Time</th>
+                <th className="pb-2 font-medium">Tx</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((o) => (
+                <tr
+                  key={o.txDigest}
+                  className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
+                >
+                  <td className="py-2.5 pr-4 text-gray-500 font-mono">{o.orderNumber}</td>
+                  <td className="py-2.5 pr-4 text-white">{o.productName}</td>
+                  <td className="py-2.5 pr-4 text-green-400 font-mono">
+                    {formatUsdc(o.price)} USDC
+                  </td>
+                  <td className="py-2.5 pr-4 text-gray-400 font-mono text-xs">
+                    {o.buyer.slice(0, 6)}…{o.buyer.slice(-4)}
+                  </td>
+                  <td className="py-2.5 pr-4 text-gray-500 text-xs whitespace-nowrap">
+                    {new Date(o.timestamp).toLocaleString()}
+                  </td>
+                  <td className="py-2.5">
+                    <a
+                      href={`https://suiscan.xyz/${NETWORK}/tx/${o.txDigest}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:text-blue-300 text-xs"
+                    >
+                      View ↗
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }

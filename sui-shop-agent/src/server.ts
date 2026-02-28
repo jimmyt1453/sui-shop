@@ -98,15 +98,15 @@ app.post('/api/chat', async (req, res) => {
     // spawning so the subprocess launches cleanly.
     const claudeExecutable = process.env.CLAUDE_EXECUTABLE ?? '/Users/jimmyt1453/.local/bin/claude';
 
-    // Build child env explicitly so CLAUDECODE is never inherited.
-    // The SDK spreads process.env if no env option is passed, so we pass one
-    // with CLAUDECODE removed to prevent the "nested session" error.
+    // Strip Claude Code host-session env vars so the child subprocess doesn't
+    // think it's already inside a Claude Code session and refuse to start.
+    const CLAUDE_HOST_VARS = new Set(['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT']);
     const childEnv: Record<string, string> = {};
     for (const [k, v] of Object.entries(process.env)) {
-      if (k !== 'CLAUDECODE' && v !== undefined) childEnv[k] = v;
+      if (!CLAUDE_HOST_VARS.has(k) && v !== undefined) childEnv[k] = v;
     }
 
-    console.log(`[chat] sessionId=${sessionId}, active=${activeSessions.has(sessionId ?? '')}, CLAUDECODE in childEnv=${'CLAUDECODE' in childEnv}`);
+    console.log(`[chat] sessionId=${sessionId}, active=${activeSessions.has(sessionId ?? '')}, strippedVars=${[...CLAUDE_HOST_VARS].join(',')}`);
 
     const sessionOptions = sessionId
       ? activeSessions.has(sessionId)

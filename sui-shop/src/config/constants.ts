@@ -33,6 +33,9 @@ export const GRPC_URLS: Record<NetworkType, string> = {
 // ===== Clock object (system) =====
 export const CLOCK_OBJECT_ID = '0x6';
 
+// ===== Agent server =====
+export const AGENT_API_URL = import.meta.env.VITE_AGENT_URL ?? 'http://localhost:3001';
+
 // ===== Helper =====
 export function getUsdcType(): string {
   return USDC_TYPE[NETWORK];
