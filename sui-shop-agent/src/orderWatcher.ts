@@ -6,7 +6,6 @@ const EVENT_TYPE = `${ORIGINAL_PACKAGE_ID}::shop::OrderPlaced`;
 export interface OrderEvent {
   orderNumber: number;
   productName: string;
-  email: string;
   price: number;
   timestamp: number;
   buyer: string;
@@ -53,14 +52,13 @@ async function pollNewOrders(): Promise<void> {
       const order: OrderEvent = {
         orderNumber: Number(fields?.order_number ?? 0),
         productName: decodeBytes(fields?.product_name ?? ''),
-        email: decodeBytes(fields?.email ?? ''),
         price: Number(fields?.price ?? 0),
         timestamp: Number(fields?.timestamp ?? 0),
         buyer: String(fields?.buyer ?? ''),
         txDigest: event.id.txDigest,
       };
 
-      console.log(`[orderWatcher] NEW ORDER #${order.orderNumber}: ${order.productName} → ${order.email}`);
+      console.log(`[orderWatcher] NEW ORDER #${order.orderNumber}: ${order.productName} (${order.buyer.slice(0, 10)}...)`);
       recentOrders.unshift(order);
       if (recentOrders.length > 100) recentOrders.pop();
     }
