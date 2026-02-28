@@ -71,7 +71,7 @@ export function BalanceWidget() {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
             <span className="text-white font-semibold text-sm">Balance History</span>
-            <span className="text-gray-600 text-xs">Last 100 snapshots · 1 min intervals</span>
+            <span className="text-gray-600 text-xs">Balance changes only</span>
           </div>
 
           {/* Current snapshot highlight */}
@@ -104,33 +104,48 @@ export function BalanceWidget() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...history].reverse().map((snap, i) => {
-                    const prevSnap = history[history.length - 2 - i];
-                    const usdcDiff = prevSnap ? snap.usdcBalance - prevSnap.usdcBalance : 0;
-                    return (
-                      <tr
-                        key={snap.timestamp}
-                        className="border-b border-gray-800/50 hover:bg-gray-800/40 transition-colors"
-                      >
-                        <td className="px-4 py-2 text-gray-500">
-                          {fmt(snap.timestamp)}
-                        </td>
-                        <td className="px-4 py-2 text-right text-gray-300 font-mono">
-                          {(snap.suiBalance / 1e9).toFixed(4)}
-                        </td>
-                        <td className="px-4 py-2 text-right font-mono">
-                          <span className="text-green-400">
-                            {(snap.usdcBalance / 1e6).toFixed(2)}
-                          </span>
-                          {usdcDiff !== 0 && (
-                            <span className={`ml-1.5 text-xs ${usdcDiff < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                              {usdcDiff < 0 ? '▼' : '▲'}{Math.abs(usdcDiff / 1e6).toFixed(2)}
+                  {(() => {
+                    // Only show snapshots where balance changed from previous
+                    const changed = history.filter((snap, i) => {
+                      if (i === 0) return true;
+                      const prev = history[i - 1];
+                      return snap.suiBalance !== prev.suiBalance || snap.usdcBalance !== prev.usdcBalance;
+                    });
+                    const display = [...changed].reverse();
+                    return display.map((snap, i) => {
+                      const prevSnap = display[i + 1];
+                      const usdcDiff = prevSnap ? snap.usdcBalance - prevSnap.usdcBalance : 0;
+                      const suiDiff = prevSnap ? snap.suiBalance - prevSnap.suiBalance : 0;
+                      return (
+                        <tr
+                          key={snap.timestamp}
+                          className="border-b border-gray-800/50 hover:bg-gray-800/40 transition-colors"
+                        >
+                          <td className="px-4 py-2 text-gray-500">
+                            {fmt(snap.timestamp)}
+                          </td>
+                          <td className="px-4 py-2 text-right text-gray-300 font-mono">
+                            {(snap.suiBalance / 1e9).toFixed(4)}
+                            {suiDiff !== 0 && (
+                              <span className={`ml-1.5 text-xs ${suiDiff < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                {suiDiff < 0 ? '▼' : '▲'}{Math.abs(suiDiff / 1e9).toFixed(4)}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-right font-mono">
+                            <span className="text-green-400">
+                              {(snap.usdcBalance / 1e6).toFixed(2)}
                             </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                            {usdcDiff !== 0 && (
+                              <span className={`ml-1.5 text-xs ${usdcDiff < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                {usdcDiff < 0 ? '▼' : '▲'}{Math.abs(usdcDiff / 1e6).toFixed(2)}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
                 </tbody>
               </table>
             )}
