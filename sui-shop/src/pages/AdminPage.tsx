@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCurrentAccount, useDAppKit } from '@mysten/dapp-kit-react';
 import { ConnectButton } from '@mysten/dapp-kit-react';
 import { useAdminCap } from '../hooks/useAdminCap';
 import { useShopProducts } from '../hooks/useShopProducts';
-import { formatUsdc, parseUsdc } from '../config/constants';
+import { useMerchantAddress } from '../hooks/useMerchantAddress';
+import { formatUsdc, parseUsdc, NETWORK } from '../config/constants';
 import {
   buildUpdatePrice,
   buildAddProduct,
@@ -70,8 +71,8 @@ export function AdminPage() {
       {/* Add Product */}
       <AddProductForm adminCapId={adminCapId!} dAppKit={dAppKit} refetch={refetch} />
 
-      {/* Update Merchant */}
-      <MerchantForm adminCapId={adminCapId!} dAppKit={dAppKit} />
+      {/* Receiving Address */}
+      <MerchantForm adminCapId={adminCapId!} dAppKit={dAppKit} walletAddress={account.address} />
     </div>
   );
 }
@@ -328,30 +329,51 @@ function AddProductForm({
 
 // ─── Merchant Address Form ────────────────────────────────────────────────────
 
+const SUI_ADDRESS_RE = /^0x[0-9a-fA-F]{64}$/;
+
 function MerchantForm({
   adminCapId,
   dAppKit,
+  walletAddress,
 }: {
   adminCapId: string;
   dAppKit: ReturnType<typeof useDAppKit>;
+  walletAddress: string;
 }) {
-  const [address, setAddress] = useState('');
+  const { address: currentAddress, loading: currentLoading, refetch } = useMerchantAddress();
+  const [input, setInput] = useState('');
+  const [copied, setCopied] = useState(false);
   const [status, setStatus] = useState<'idle' | 'busy' | 'ok' | 'error'>('idle');
   const [errMsg, setErrMsg] = useState('');
+  const [txDigest, setTxDigest] = useState<string | null>(null);
+
+  useEffect(() => { refetch(); }, [refetch]);
+
+  const isValid = SUI_ADDRESS_RE.test(input);
+
+  const handleCopy = async () => {
+    if (!currentAddress) return;
+    await navigator.clipboard.writeText(currentAddress);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!address.startsWith('0x')) return;
+    if (!isValid) return;
 
     setStatus('busy');
     setErrMsg('');
+    setTxDigest(null);
     try {
-      const tx = buildUpdateMerchant(address, adminCapId);
+      const tx = buildUpdateMerchant(input, adminCapId);
       const result = await dAppKit.signAndExecuteTransaction({ transaction: tx });
       if ('FailedTransaction' in result) throw new Error('Transaction failed');
+      const digest = result.Transaction?.digest ?? null;
+      setTxDigest(digest);
       setStatus('ok');
-      setAddress('');
-      setTimeout(() => setStatus('idle'), 3000);
+      setInput('');
+      refetch();
     } catch (err: any) {
       setErrMsg(err.message ?? 'Failed');
       setStatus('error');
@@ -360,26 +382,93 @@ function MerchantForm({
 
   return (
     <section className="bg-gray-800 rounded-xl border border-gray-700 p-6">
-      <h2 className="text-xl font-bold text-white mb-1">Update Merchant Address</h2>
-      <p className="text-gray-500 text-sm mb-4">Payments will be sent to this address.</p>
-      <form onSubmit={handleSubmit} className="flex gap-3 flex-wrap">
-        <input
-          required
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="0x… new merchant address"
-          className="flex-1 min-w-[300px] bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500 font-mono"
-        />
+      <h2 className="text-xl font-bold text-white mb-1">Receiving Address</h2>
+      <p className="text-gray-500 text-sm mb-5">
+        All purchase payments are sent to this address on-chain.
+      </p>
+
+      {/* Current address */}
+      <div className="bg-gray-900 rounded-lg border border-gray-700 px-4 py-3 mb-5">
+        <p className="text-xs text-gray-500 mb-1">Current receiving address</p>
+        {currentLoading ? (
+          <p className="text-gray-400 text-sm animate-pulse">Loading…</p>
+        ) : currentAddress ? (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-green-400 font-mono text-sm break-all">{currentAddress}</span>
+            <button
+              onClick={handleCopy}
+              className="text-xs text-gray-400 hover:text-white shrink-0 cursor-pointer transition-colors"
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+            <a
+              href={`https://suiscan.xyz/${NETWORK}/account/${currentAddress}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-400 hover:text-blue-300 shrink-0"
+            >
+              SuiScan ↗
+            </a>
+          </div>
+        ) : (
+          <p className="text-gray-500 text-sm">Not set</p>
+        )}
+      </div>
+
+      {/* Update form */}
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="flex gap-2 flex-wrap">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value.trim())}
+            placeholder="0x… new receiving address"
+            className={`flex-1 min-w-[300px] bg-gray-900 border rounded-lg px-4 py-2 text-white text-sm placeholder-gray-500 focus:outline-none font-mono transition-colors ${
+              input && !isValid
+                ? 'border-red-600 focus:border-red-500'
+                : 'border-gray-700 focus:border-blue-500'
+            }`}
+          />
+          <button
+            type="button"
+            onClick={() => setInput(walletAddress)}
+            className="text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2 rounded-lg transition-colors cursor-pointer shrink-0"
+          >
+            Use my wallet
+          </button>
+        </div>
+
+        {input && !isValid && (
+          <p className="text-red-400 text-xs">
+            Must be a full SUI address (0x + 64 hex characters)
+          </p>
+        )}
+
+        {status === 'error' && <p className="text-red-400 text-sm">{errMsg}</p>}
+
+        {status === 'ok' && (
+          <div className="flex items-center gap-3">
+            <p className="text-green-400 text-sm">Receiving address updated!</p>
+            {txDigest && (
+              <a
+                href={`https://suiscan.xyz/${NETWORK}/tx/${txDigest}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 text-xs"
+              >
+                View tx ↗
+              </a>
+            )}
+          </div>
+        )}
+
         <button
           type="submit"
-          disabled={status === 'busy'}
-          className="bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 text-white font-medium px-5 py-2 rounded-lg transition-colors cursor-pointer"
+          disabled={status === 'busy' || !isValid}
+          className="bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium px-6 py-2 rounded-lg transition-colors cursor-pointer"
         >
-          {status === 'busy' ? 'Updating…' : 'Update'}
+          {status === 'busy' ? 'Updating…' : 'Update receiving address'}
         </button>
       </form>
-      {status === 'error' && <p className="text-red-400 text-sm mt-2">{errMsg}</p>}
-      {status === 'ok' && <p className="text-green-400 text-sm mt-2">Merchant address updated!</p>}
     </section>
   );
 }
