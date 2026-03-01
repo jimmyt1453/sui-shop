@@ -9,7 +9,12 @@ export function Cart() {
   if (items.length === 0) {
     return (
       <div className="text-center py-16">
-        <span className="text-6xl block mb-4">🛒</span>
+        <div className="relative inline-flex items-center justify-center mb-4">
+          <div className="absolute w-16 h-16 rounded-2xl bg-blue-600/30 motion-safe:animate-ping" />
+          <div className="relative w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl flex items-center justify-center text-3xl">
+            🛒
+          </div>
+        </div>
         <h2 className="text-2xl font-bold text-white mb-2">
           Your cart is empty
         </h2>
@@ -32,8 +37,11 @@ export function Cart() {
         <h2 className="text-2xl font-bold text-white">Shopping Cart</h2>
         <button
           onClick={clearCart}
-          className="text-sm text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+          className="text-sm text-red-400 hover:text-red-400 transition-colors cursor-pointer flex items-center gap-1"
         >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
+            <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
+          </svg>
           Clear Cart
         </button>
       </div>
@@ -87,7 +95,9 @@ export function Cart() {
                 onClick={() => removeItem(item.productId)}
                 className="text-gray-500 hover:text-red-400 transition-colors cursor-pointer ml-2"
               >
-                ✕
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
+                  <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
+                </svg>
               </button>
             </div>
           );

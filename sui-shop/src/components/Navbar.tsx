@@ -17,19 +17,26 @@ export function Navbar() {
       ? 'text-blue-400 border-b-2 border-blue-400'
       : 'text-gray-300 hover:text-white';
 
+  const networkBadgeColor =
+    NETWORK === 'mainnet'
+      ? 'bg-emerald-600'
+      : NETWORK === 'testnet'
+        ? 'bg-amber-500'
+        : 'bg-blue-600';
+
   return (
     <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Name */}
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-2xl">🛍️</span>
-            <span className="text-xl font-bold text-white">
-              Jimmy's SUI Shop
-            </span>
-            <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase">
-              {NETWORK}
-            </span>
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+              🛍️
+            </div>
+            <div className="flex flex-col leading-tight">
+              <span className="text-sm font-bold text-white">Jimmy's SUI Shop</span>
+              <span className="text-xs text-gray-500">SUI Blockchain</span>
+            </div>
           </Link>
 
           {/* Nav Links */}
@@ -71,10 +78,16 @@ export function Navbar() {
               </Link>
             )}
 
-            {/* USDC Balance */}
+            {/* Network badge + USDC Balance */}
             {account && (
-              <div className="text-sm text-gray-400">
-                <span className="text-green-400 font-mono">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`flex items-center gap-1 text-xs text-white px-2 py-0.5 rounded-full uppercase font-medium ${networkBadgeColor}`}
+                >
+                  <span className="w-1.5 h-1.5 bg-white/70 rounded-full animate-pulse" />
+                  {NETWORK}
+                </span>
+                <span className="bg-gray-800 border border-gray-700 rounded-full px-2.5 py-0.5 text-sm font-mono text-green-400">
                   {formatUsdc(balance)} USDC
                 </span>
               </div>

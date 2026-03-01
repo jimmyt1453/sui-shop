@@ -2,6 +2,25 @@ import { useCurrentAccount } from '@mysten/dapp-kit-react';
 import { useOrders } from '../hooks/useOrders';
 import { formatUsdc, PRODUCTS, NETWORK } from '../config/constants';
 
+const CATEGORY_COLORS: Record<string, string> = {
+  Gaming: 'border-violet-500',
+  Entertainment: 'border-blue-500',
+  Digital: 'border-amber-500',
+  Shopping: 'border-emerald-500',
+  Food: 'border-orange-500',
+};
+
+function GradientIcon({ emoji }: { emoji: string }) {
+  return (
+    <div className="relative inline-flex items-center justify-center mb-4">
+      <div className="absolute w-16 h-16 rounded-2xl bg-blue-600/30 motion-safe:animate-ping" />
+      <div className="relative w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl flex items-center justify-center text-3xl">
+        {emoji}
+      </div>
+    </div>
+  );
+}
+
 export function OrderHistory() {
   const account = useCurrentAccount();
   const { orders, loading, error, refetch } = useOrders();
@@ -9,7 +28,7 @@ export function OrderHistory() {
   if (!account) {
     return (
       <div className="text-center py-16">
-        <span className="text-6xl block mb-4">🔒</span>
+        <GradientIcon emoji="🔒" />
         <h2 className="text-2xl font-bold text-white mb-2">
           Connect Your Wallet
         </h2>
@@ -23,7 +42,11 @@ export function OrderHistory() {
   if (loading) {
     return (
       <div className="text-center py-16">
-        <div className="animate-spin text-4xl mb-4">⏳</div>
+        <div className="flex items-center justify-center gap-1.5 mb-4">
+          <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
+          <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
+          <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]" />
+        </div>
         <p className="text-gray-400">Loading orders from the blockchain...</p>
       </div>
     );
@@ -32,7 +55,7 @@ export function OrderHistory() {
   if (error) {
     return (
       <div className="text-center py-16">
-        <span className="text-4xl block mb-4">⚠️</span>
+        <GradientIcon emoji="⚠️" />
         <p className="text-red-400 mb-4">{error}</p>
         <button
           onClick={refetch}
@@ -47,7 +70,7 @@ export function OrderHistory() {
   if (orders.length === 0) {
     return (
       <div className="text-center py-16">
-        <span className="text-6xl block mb-4">📋</span>
+        <GradientIcon emoji="📋" />
         <h2 className="text-2xl font-bold text-white mb-2">No Orders Yet</h2>
         <p className="text-gray-400">
           Your on-chain purchase receipts will appear here.
@@ -77,11 +100,12 @@ export function OrderHistory() {
         {orders.map((order) => {
           const product = PRODUCTS.find((p) => p.id === order.productId);
           const emoji = product?.emoji || '📦';
+          const borderColor = CATEGORY_COLORS[product?.category ?? ''] ?? 'border-gray-600';
 
           return (
             <div
               key={order.id}
-              className="bg-gray-800 rounded-lg border border-gray-700 p-4 hover:border-gray-600 transition-colors"
+              className={`bg-gray-800 rounded-lg border border-gray-700 border-l-4 ${borderColor} p-4 hover:border-gray-600 transition-colors`}
             >
               <div className="flex items-center gap-4">
                 <span className="text-3xl">{emoji}</span>
