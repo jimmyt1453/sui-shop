@@ -43,7 +43,11 @@ export function BalanceWidget() {
         }`}
       >
         {loading ? (
-          <span className="text-gray-500 animate-pulse">Loading…</span>
+          <span className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:0ms]" />
+            <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:150ms]" />
+            <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:300ms]" />
+          </span>
         ) : (
           <>
             <span className="text-gray-400">
@@ -106,7 +110,11 @@ export function BalanceWidget() {
           {/* History table */}
           <div className="overflow-y-auto max-h-64">
             {historyLoading ? (
-              <p className="text-gray-500 text-xs text-center py-6 animate-pulse">Loading history…</p>
+              <div className="flex items-center justify-center gap-1.5 py-6">
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:0ms]" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:150ms]" />
+                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:300ms]" />
+              </div>
             ) : history.length === 0 ? (
               <p className="text-gray-600 text-xs text-center py-6">No history yet.</p>
             ) : (
