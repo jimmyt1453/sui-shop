@@ -87,26 +87,11 @@ export function Checkout() {
   if (status === 'confirming') {
     return (
       <div className="max-w-lg mx-auto mt-8 bg-gray-800 rounded-xl border border-blue-700 p-8 text-center">
-        <div className="flex justify-center mb-4">
-          <svg
-            className="animate-spin h-12 w-12 text-blue-400"
-            viewBox="0 0 24 24"
-            fill="none"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-            />
-          </svg>
+        <div className="relative inline-flex items-center justify-center mb-4">
+          <div className="absolute w-16 h-16 rounded-2xl bg-blue-600/30 motion-safe:animate-ping" />
+          <div className="relative w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl flex items-center justify-center text-3xl">
+            ⛓️
+          </div>
         </div>
         <h2 className="text-2xl font-bold text-white mb-2">
           Confirming on-chain...
@@ -136,7 +121,12 @@ export function Checkout() {
       <div className="max-w-lg mx-auto mt-8 bg-gray-800 rounded-xl border border-green-700 p-8 text-center">
         {confirmStatus === 'timeout' ? (
           <>
-            <span className="text-6xl block mb-4">📡</span>
+            <div className="relative inline-flex items-center justify-center mb-4">
+              <div className="absolute w-16 h-16 rounded-2xl bg-blue-600/30 motion-safe:animate-ping" />
+              <div className="relative w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl flex items-center justify-center text-3xl">
+                📡
+              </div>
+            </div>
             <h2 className="text-2xl font-bold text-white mb-2">
               Transaction Submitted
             </h2>
@@ -146,7 +136,12 @@ export function Checkout() {
           </>
         ) : (
           <>
-            <span className="text-6xl block mb-4">✅</span>
+            <div className="relative inline-flex items-center justify-center mb-4">
+              <div className="absolute w-16 h-16 rounded-2xl bg-emerald-600/30 motion-safe:animate-ping" />
+              <div className="relative w-16 h-16 bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-2xl flex items-center justify-center text-3xl">
+                ✅
+              </div>
+            </div>
             <h2 className="text-2xl font-bold text-white mb-2">
               Transaction confirmed on-chain ✓
             </h2>
@@ -190,7 +185,12 @@ export function Checkout() {
 
   return (
     <div className="max-w-lg mx-auto mt-8 bg-gray-800 rounded-xl border border-gray-700 p-6">
-      <h3 className="text-lg font-bold text-white mb-4">Checkout</h3>
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-7 h-7 bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-lg flex items-center justify-center text-sm">
+          💳
+        </div>
+        <h3 className="text-lg font-bold text-white">Checkout</h3>
+      </div>
 
       {/* Email Input */}
       <div className="mb-4">
