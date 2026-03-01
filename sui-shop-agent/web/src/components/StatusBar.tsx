@@ -1,7 +1,15 @@
+import { useState } from 'react';
 import { useAgentStatus } from '../hooks/useAgentStatus';
+
+function networkBadgeColor(network: string): string {
+  if (network === 'mainnet') return 'bg-emerald-600';
+  if (network === 'testnet') return 'bg-amber-500';
+  return 'bg-blue-600';
+}
 
 export function StatusBar() {
   const { status, loading } = useAgentStatus();
+  const [copied, setCopied] = useState(false);
 
   if (loading) {
     return <span className="text-gray-600 text-xs font-mono animate-pulse">Connecting…</span>;
@@ -13,14 +21,25 @@ export function StatusBar() {
 
   const shortAddr = `${status.address.slice(0, 6)}…${status.address.slice(-4)}`;
 
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(status.address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
     <div className="flex items-center gap-3 text-xs">
-      <span className="bg-blue-600 text-white px-2 py-0.5 rounded-full uppercase font-medium tracking-wide">
+      <span className={`flex items-center gap-1.5 text-white px-2 py-0.5 rounded-full uppercase font-medium tracking-wide ${networkBadgeColor(status.network)}`}>
+        <span className="w-1.5 h-1.5 bg-white/70 rounded-full animate-pulse" />
         {status.network}
       </span>
-      <span className="text-gray-400 font-mono" title={status.address}>
-        Wallet: <span className="text-green-400">{shortAddr}</span>
-      </span>
+      <button
+        onClick={handleCopy}
+        title={copied ? 'Copied!' : status.address}
+        className="text-green-400 font-mono hover:text-green-300 transition-colors cursor-pointer"
+      >
+        {copied ? 'Copied!' : shortAddr}
+      </button>
     </div>
   );
 }

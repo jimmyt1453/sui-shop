@@ -37,14 +37,17 @@ export function ChatInput({ onSend, disabled }: Props) {
   };
 
   return (
-    <div className="flex gap-3 items-end bg-gray-900 border border-gray-700 rounded-xl p-3 focus-within:border-blue-600 transition-colors">
+    <div className={[
+      'flex gap-3 items-end bg-gray-900 border rounded-xl p-3 focus-within:border-blue-600 transition-colors',
+      disabled ? 'border-blue-600/40 animate-pulse' : 'border-gray-700',
+    ].join(' ')}>
       <textarea
         ref={textareaRef}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         onInput={handleInput}
-        placeholder='Try "What can I buy?" or "Check my balance"'
+        placeholder="Ask about products, balances, or orders…"
         disabled={disabled}
         rows={1}
         className="flex-1 bg-transparent text-gray-100 placeholder-gray-600 text-sm resize-none outline-none leading-relaxed disabled:opacity-50"
@@ -53,15 +56,14 @@ export function ChatInput({ onSend, disabled }: Props) {
       <button
         onClick={handleSend}
         disabled={disabled || !value.trim()}
-        className="shrink-0 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed select-none"
+        className="shrink-0 w-9 h-9 flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed select-none"
       >
         {disabled ? (
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 border-2 border-gray-500 border-t-white rounded-full animate-spin" />
-            Running…
-          </span>
+          <span className="w-4 h-4 border-2 border-gray-600 border-t-blue-400 rounded-full animate-spin" />
         ) : (
-          'Send'
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <path fillRule="evenodd" d="M10 17a.75.75 0 0 1-.75-.75V5.612L5.29 9.77a.75.75 0 0 1-1.08-1.04l5.25-5.5a.75.75 0 0 1 1.08 0l5.25 5.5a.75.75 0 1 1-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0 1 10 17Z" clipRule="evenodd" />
+          </svg>
         )}
       </button>
     </div>
