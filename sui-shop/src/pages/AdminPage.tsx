@@ -12,16 +12,47 @@ import {
   buildUpdateMerchant,
 } from '../lib/adminTransactions';
 
+type Tab = 'products' | 'inventory' | 'orders' | 'settings';
+
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: 'products', label: 'Products', icon: '📦' },
+  { id: 'inventory', label: 'Inventory', icon: '🗃️' },
+  { id: 'orders', label: 'Orders', icon: '📋' },
+  { id: 'settings', label: 'Settings', icon: '⚙️' },
+];
+
+function GradientIcon({ emoji }: { emoji: string }) {
+  return (
+    <div className="relative inline-flex items-center justify-center mb-4">
+      <div className="absolute w-16 h-16 rounded-2xl bg-blue-600/30 motion-safe:animate-ping" />
+      <div className="relative w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl flex items-center justify-center text-3xl">
+        {emoji}
+      </div>
+    </div>
+  );
+}
+
+function BounceDots() {
+  return (
+    <div className="flex items-center justify-center gap-1.5 mb-4">
+      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
+      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
+      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]" />
+    </div>
+  );
+}
+
 export function AdminPage() {
   const account = useCurrentAccount();
   const dAppKit = useDAppKit();
   const { adminCapId, isAdmin, loading: capLoading } = useAdminCap();
   const { products, loading: productsLoading, error, refetch } = useShopProducts();
+  const [activeTab, setActiveTab] = useState<Tab>('products');
 
   if (!account) {
     return (
       <div className="text-center py-20">
-        <span className="text-6xl block mb-4">🔒</span>
+        <GradientIcon emoji="🔒" />
         <h2 className="text-2xl font-bold text-white mb-2">Admin Access Required</h2>
         <p className="text-gray-400 mb-6">Connect the wallet that holds the AdminCap.</p>
         <ConnectButton />
@@ -32,7 +63,8 @@ export function AdminPage() {
   if (capLoading) {
     return (
       <div className="text-center py-20">
-        <p className="text-gray-400 animate-pulse">Checking admin privileges…</p>
+        <BounceDots />
+        <p className="text-gray-400">Checking admin privileges…</p>
       </div>
     );
   }
@@ -40,7 +72,7 @@ export function AdminPage() {
   if (!isAdmin) {
     return (
       <div className="text-center py-20">
-        <span className="text-6xl block mb-4">⛔</span>
+        <GradientIcon emoji="⛔" />
         <h2 className="text-2xl font-bold text-white mb-2">Not Authorized</h2>
         <p className="text-gray-400">
           The connected wallet does not own the AdminCap for this shop.
@@ -50,32 +82,68 @@ export function AdminPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-10">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-        <span className="text-xs bg-green-800 text-green-300 px-3 py-1 rounded-full">
+    <div className="max-w-5xl mx-auto">
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-gray-600 to-gray-800 rounded-xl flex items-center justify-center text-xl border border-gray-700">
+            ⚙️
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white leading-tight">Admin Dashboard</h1>
+            <p className="text-gray-500 text-xs">Jimmy's SUI Shop</p>
+          </div>
+        </div>
+        <span className="flex items-center gap-1.5 text-xs bg-green-900 text-green-300 px-3 py-1 rounded-full">
+          <span className="w-1.5 h-1.5 bg-green-400/70 rounded-full animate-pulse" />
           AdminCap verified ✓
         </span>
       </div>
 
-      {/* Product Manager */}
-      <ProductManager
-        products={products}
-        loading={productsLoading}
-        error={error}
-        adminCapId={adminCapId!}
-        dAppKit={dAppKit}
-        refetch={refetch}
-      />
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-gray-700 mb-8">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium rounded-t-lg transition-colors cursor-pointer ${
+              activeTab === tab.id
+                ? 'bg-gray-800 text-white border border-b-gray-800 border-gray-700 -mb-px'
+                : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+            }`}
+          >
+            <span className="text-base">{tab.icon}</span>
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-      {/* Add Product */}
-      <AddProductForm adminCapId={adminCapId!} dAppKit={dAppKit} refetch={refetch} />
+      {/* Tab content */}
+      {activeTab === 'products' && (
+        <div className="space-y-8">
+          <ProductManager
+            products={products}
+            loading={productsLoading}
+            error={error}
+            adminCapId={adminCapId!}
+            dAppKit={dAppKit}
+            refetch={refetch}
+          />
+          <AddProductForm adminCapId={adminCapId!} dAppKit={dAppKit} refetch={refetch} />
+        </div>
+      )}
 
-      {/* Receiving Address */}
-      <MerchantForm adminCapId={adminCapId!} dAppKit={dAppKit} walletAddress={account.address} />
+      {activeTab === 'inventory' && (
+        <InventoryManager />
+      )}
 
-      {/* Recent Orders */}
-      <RecentOrders />
+      {activeTab === 'orders' && (
+        <RecentOrders />
+      )}
+
+      {activeTab === 'settings' && (
+        <MerchantForm adminCapId={adminCapId!} dAppKit={dAppKit} walletAddress={account.address} />
+      )}
     </div>
   );
 }
@@ -118,13 +186,23 @@ function ProductManager({
     }
   };
 
-  if (loading) return <p className="text-gray-400 animate-pulse">Loading on-chain products…</p>;
+  if (loading) {
+    return (
+      <div className="py-8 text-center">
+        <BounceDots />
+        <p className="text-gray-400 text-sm">Loading on-chain products…</p>
+      </div>
+    );
+  }
   if (error) return <p className="text-red-400">{error}</p>;
 
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-white">Products ({products.length})</h2>
+        <div>
+          <h2 className="text-xl font-bold text-white">Products</h2>
+          <p className="text-gray-500 text-xs mt-0.5">{products.length} product{products.length !== 1 ? 's' : ''} on-chain</p>
+        </div>
         <button
           onClick={refetch}
           className="text-sm text-blue-400 hover:text-blue-300 cursor-pointer"
@@ -137,8 +215,10 @@ function ProductManager({
         {products.map((p) => (
           <div
             key={p.id}
-            className={`bg-gray-800 rounded-lg border px-4 py-3 flex flex-wrap items-center gap-3 transition-colors ${
-              p.active ? 'border-gray-700' : 'border-gray-700 opacity-50'
+            className={`bg-gray-800 rounded-lg border border-l-4 px-4 py-3 flex flex-wrap items-center gap-3 transition-colors ${
+              p.active
+                ? 'border-gray-700 border-l-emerald-600'
+                : 'border-gray-700 border-l-gray-600 opacity-50'
             }`}
           >
             {/* ID + name */}
@@ -149,7 +229,7 @@ function ProductManager({
             <span
               className={`text-xs px-2 py-0.5 rounded-full ${
                 p.active
-                  ? 'bg-green-900 text-green-400'
+                  ? 'bg-emerald-900/60 text-emerald-400'
                   : 'bg-gray-700 text-gray-500'
               }`}
             >
@@ -212,8 +292,8 @@ function ProductManager({
               }
               className={`text-xs px-3 py-1 rounded cursor-pointer disabled:opacity-50 ${
                 p.active
-                  ? 'bg-red-900 hover:bg-red-800 text-red-300'
-                  : 'bg-green-900 hover:bg-green-800 text-green-300'
+                  ? 'bg-red-900/60 hover:bg-red-800 text-red-300'
+                  : 'bg-emerald-900/60 hover:bg-emerald-800 text-emerald-300'
               }`}
             >
               {p.active ? 'Deactivate' : 'Activate'}
@@ -395,7 +475,11 @@ function MerchantForm({
       <div className="bg-gray-900 rounded-lg border border-gray-700 px-4 py-3 mb-5">
         <p className="text-xs text-gray-500 mb-1">Current receiving address</p>
         {currentLoading ? (
-          <p className="text-gray-400 text-sm animate-pulse">Loading…</p>
+          <div className="flex items-center gap-1.5 py-1">
+            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
+            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
+            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]" />
+          </div>
         ) : currentAddress ? (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-green-400 font-mono text-sm break-all">{currentAddress}</span>
@@ -477,7 +561,176 @@ function MerchantForm({
   );
 }
 
+// ─── Inventory Manager ────────────────────────────────────────────────────────
+
+function InventoryManager() {
+  const [inventory, setInventory] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [inputs, setInputs] = useState<Record<string, string>>({});
+  const [addStatus, setAddStatus] = useState<Record<string, 'idle' | 'busy' | 'ok' | 'error'>>({});
+
+  const fetchInventory = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${AGENT_API_URL}/api/inventory`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setInventory(data.inventory ?? {});
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to fetch inventory');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchInventory(); }, [fetchInventory]);
+
+  const handleAdd = async (productId: string) => {
+    const raw = inputs[productId] ?? '';
+    const codes = raw.split(/[\n,]+/).map((c) => c.trim()).filter(Boolean);
+    if (codes.length === 0) return;
+
+    setAddStatus((s) => ({ ...s, [productId]: 'busy' }));
+    try {
+      const res = await fetch(`${AGENT_API_URL}/api/inventory/${productId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codes }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setInventory(data.inventory ?? {});
+      setInputs((i) => ({ ...i, [productId]: '' }));
+      setAddStatus((s) => ({ ...s, [productId]: 'ok' }));
+      setTimeout(() => setAddStatus((s) => ({ ...s, [productId]: 'idle' })), 2000);
+    } catch (err: any) {
+      setAddStatus((s) => ({ ...s, [productId]: 'error' }));
+    }
+  };
+
+  const [newProductId, setNewProductId] = useState('');
+  const allProductIds = Array.from(
+    new Set([...Object.keys(inventory), newProductId].filter(Boolean))
+  ).sort((a, b) => Number(a) - Number(b));
+
+  const lowStockIds = allProductIds.filter((pid) => (inventory[pid] ?? 0) <= 2 && (inventory[pid] ?? 0) > 0);
+  const noStockIds = allProductIds.filter((pid) => (inventory[pid] ?? 0) === 0);
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-xl font-bold text-white">Inventory</h2>
+          <p className="text-gray-500 text-xs mt-0.5">Redemption codes per product</p>
+        </div>
+        <button
+          onClick={fetchInventory}
+          disabled={loading}
+          className="text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50 cursor-pointer"
+        >
+          {loading ? 'Loading…' : 'Refresh'}
+        </button>
+      </div>
+
+      {loading && (
+        <div className="py-8 text-center">
+          <BounceDots />
+          <p className="text-gray-400 text-sm">Loading inventory…</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-900/30 border border-red-700 rounded-lg px-4 py-3 mb-4">
+          <p className="text-red-400 text-sm">Could not reach agent server: {error}</p>
+        </div>
+      )}
+
+      {/* Stock warnings */}
+      {(lowStockIds.length > 0 || noStockIds.length > 0) && !error && (
+        <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg px-4 py-3 mb-4 space-y-1">
+          {noStockIds.length > 0 && (
+            <p className="text-yellow-400 text-xs">
+              Out of stock: Product{noStockIds.length > 1 ? 's' : ''} #{noStockIds.join(', #')}
+            </p>
+          )}
+          {lowStockIds.length > 0 && (
+            <p className="text-yellow-500 text-xs">
+              Low stock (&le;2): Product{lowStockIds.length > 1 ? 's' : ''} #{lowStockIds.join(', #')}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {allProductIds.map((pid) => (
+          <div key={pid} className="bg-gray-800 rounded-lg border border-gray-700 px-4 py-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-white text-sm font-medium">Product #{pid}</span>
+              <span className={`text-xs font-mono px-2 py-0.5 rounded-full ${
+                (inventory[pid] ?? 0) > 2
+                  ? 'bg-emerald-900/60 text-emerald-400'
+                  : (inventory[pid] ?? 0) > 0
+                  ? 'bg-amber-900/60 text-amber-400'
+                  : 'bg-gray-700 text-gray-500'
+              }`}>
+                {inventory[pid] ?? 0} in stock
+              </span>
+            </div>
+            <div className="flex gap-2 items-start">
+              <textarea
+                value={inputs[pid] ?? ''}
+                onChange={(e) => setInputs((i) => ({ ...i, [pid]: e.target.value }))}
+                placeholder="Paste codes here, one per line or comma-separated"
+                rows={2}
+                className="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-white text-xs placeholder-gray-600 focus:outline-none focus:border-blue-500 resize-none font-mono"
+              />
+              <button
+                onClick={() => handleAdd(pid)}
+                disabled={addStatus[pid] === 'busy' || !(inputs[pid] ?? '').trim()}
+                className="text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-2 rounded cursor-pointer shrink-0"
+              >
+                {addStatus[pid] === 'busy' ? '…' : addStatus[pid] === 'ok' ? 'Added!' : 'Add'}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-2 mt-4">
+        <input
+          value={newProductId}
+          onChange={(e) => setNewProductId(e.target.value.replace(/\D/g, ''))}
+          placeholder="Product ID (number)"
+          className="w-40 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+        />
+        <button
+          onClick={() => {
+            if (newProductId && !allProductIds.includes(newProductId)) {
+              setInventory((inv) => ({ ...inv, [newProductId]: inv[newProductId] ?? 0 }));
+            }
+          }}
+          className="text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2 rounded cursor-pointer"
+        >
+          Add product slot
+        </button>
+      </div>
+    </section>
+  );
+}
+
 // ─── Recent Orders ────────────────────────────────────────────────────────────
+
+type FulfillmentStatus = 'pending' | 'fulfilled' | 'failed' | 'no_inventory';
+
+interface FulfillmentRecord {
+  status: FulfillmentStatus;
+  email?: string;
+  code?: string;
+  fulfilledAt?: string;
+  error?: string;
+}
 
 interface OrderEvent {
   orderNumber: number;
@@ -486,6 +739,45 @@ interface OrderEvent {
   timestamp: number;
   buyer: string;
   txDigest: string;
+  fulfillment: FulfillmentRecord | null;
+}
+
+function FulfillmentBadge({
+  orderNumber,
+  fulfillment,
+  onRetry,
+}: {
+  orderNumber: number;
+  fulfillment: FulfillmentRecord | null;
+  onRetry: (orderNumber: number) => void;
+}) {
+  if (!fulfillment) {
+    return <span className="text-xs text-gray-600">—</span>;
+  }
+
+  const { status } = fulfillment;
+
+  if (status === 'fulfilled') {
+    return <span className="text-xs bg-emerald-900/60 text-emerald-400 px-2 py-0.5 rounded-full">fulfilled</span>;
+  }
+  if (status === 'pending') {
+    return <span className="text-xs bg-amber-900/60 text-amber-400 px-2 py-0.5 rounded-full">pending</span>;
+  }
+  if (status === 'no_inventory') {
+    return <span className="text-xs bg-gray-700 text-gray-400 px-2 py-0.5 rounded-full">no stock</span>;
+  }
+  // failed
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-xs bg-red-900/60 text-red-400 px-2 py-0.5 rounded-full">failed</span>
+      <button
+        onClick={() => onRetry(orderNumber)}
+        className="text-xs text-blue-400 hover:text-blue-300 cursor-pointer"
+      >
+        Retry
+      </button>
+    </div>
+  );
 }
 
 function RecentOrders() {
@@ -516,27 +808,51 @@ function RecentOrders() {
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
+  const handleRetry = async (orderNumber: number) => {
+    try {
+      await fetch(`${AGENT_API_URL}/api/fulfillments/${orderNumber}/retry`, { method: 'POST' });
+      setTimeout(fetchOrders, 1000);
+    } catch {
+      // ignore
+    }
+  };
+
+  const pendingCount = orders.filter((o) => o.fulfillment?.status === 'pending').length;
+  const failedCount = orders.filter((o) => o.fulfillment?.status === 'failed').length;
+
   return (
-    <section className="bg-gray-800 rounded-xl border border-gray-700 p-6">
-      <div className="flex items-center justify-between mb-5">
+    <section>
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-bold text-white">Recent Orders</h2>
           <p className="text-gray-500 text-xs mt-0.5">
-            Live feed from on-chain events · refreshes every 10s
+            Live feed · refreshes every 10s
             {lastFetched && (
               <span className="ml-2 text-gray-600">
-                Last updated {lastFetched.toLocaleTimeString()}
+                · {lastFetched.toLocaleTimeString()}
               </span>
             )}
           </p>
         </div>
-        <button
-          onClick={fetchOrders}
-          disabled={loading}
-          className="text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50 cursor-pointer"
-        >
-          {loading ? 'Refreshing…' : 'Refresh'}
-        </button>
+        <div className="flex items-center gap-3">
+          {pendingCount > 0 && (
+            <span className="text-xs bg-amber-900/60 text-amber-400 px-2 py-0.5 rounded-full">
+              {pendingCount} pending
+            </span>
+          )}
+          {failedCount > 0 && (
+            <span className="text-xs bg-red-900/60 text-red-400 px-2 py-0.5 rounded-full">
+              {failedCount} failed
+            </span>
+          )}
+          <button
+            onClick={fetchOrders}
+            disabled={loading}
+            className="text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50 cursor-pointer"
+          >
+            {loading ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -550,53 +866,81 @@ function RecentOrders() {
       )}
 
       {!error && orders.length === 0 && !loading && (
-        <p className="text-gray-500 text-sm">No orders recorded yet.</p>
+        <div className="text-center py-16">
+          <GradientIcon emoji="📋" />
+          <p className="text-gray-500 text-sm">No orders recorded yet.</p>
+        </div>
+      )}
+
+      {loading && orders.length === 0 && (
+        <div className="py-8 text-center">
+          <BounceDots />
+          <p className="text-gray-400 text-sm">Loading orders…</p>
+        </div>
       )}
 
       {orders.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-500 border-b border-gray-700">
-                <th className="pb-2 pr-4 font-medium">#</th>
-                <th className="pb-2 pr-4 font-medium">Product</th>
-                <th className="pb-2 pr-4 font-medium">Price</th>
-                <th className="pb-2 pr-4 font-medium">Buyer</th>
-                <th className="pb-2 pr-4 font-medium">Time</th>
-                <th className="pb-2 font-medium">Tx</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((o) => (
-                <tr
-                  key={o.txDigest}
-                  className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
-                >
-                  <td className="py-2.5 pr-4 text-gray-500 font-mono">{o.orderNumber}</td>
-                  <td className="py-2.5 pr-4 text-white">{o.productName}</td>
-                  <td className="py-2.5 pr-4 text-green-400 font-mono">
-                    {formatUsdc(o.price)} USDC
-                  </td>
-                  <td className="py-2.5 pr-4 text-gray-400 font-mono text-xs">
-                    {o.buyer.slice(0, 6)}…{o.buyer.slice(-4)}
-                  </td>
-                  <td className="py-2.5 pr-4 text-gray-500 text-xs whitespace-nowrap">
-                    {new Date(o.timestamp).toLocaleString()}
-                  </td>
-                  <td className="py-2.5">
-                    <a
-                      href={`https://suiscan.xyz/${NETWORK}/tx/${o.txDigest}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 hover:text-blue-300 text-xs"
-                    >
-                      View ↗
-                    </a>
-                  </td>
+        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 bg-gray-900/50 border-b border-gray-700">
+                  <th className="px-4 py-3 font-medium">#</th>
+                  <th className="px-4 py-3 font-medium">Product</th>
+                  <th className="px-4 py-3 font-medium">Price</th>
+                  <th className="px-4 py-3 font-medium">Buyer</th>
+                  <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Time</th>
+                  <th className="px-4 py-3 font-medium">Tx</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {orders.map((o) => (
+                  <tr
+                    key={o.txDigest}
+                    className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
+                  >
+                    <td className="px-4 py-2.5 text-gray-500 font-mono">{o.orderNumber}</td>
+                    <td className="px-4 py-2.5 text-white">{o.productName}</td>
+                    <td className="px-4 py-2.5 text-green-400 font-mono">
+                      {formatUsdc(o.price)} USDC
+                    </td>
+                    <td className="px-4 py-2.5 text-gray-400 font-mono text-xs">
+                      {o.buyer.slice(0, 6)}…{o.buyer.slice(-4)}
+                    </td>
+                    <td className="px-4 py-2.5 text-gray-400 text-xs">
+                      {o.fulfillment?.email
+                        ? o.fulfillment.email.length > 20
+                          ? `${o.fulfillment.email.slice(0, 18)}…`
+                          : o.fulfillment.email
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <FulfillmentBadge
+                        orderNumber={o.orderNumber}
+                        fulfillment={o.fulfillment}
+                        onRetry={handleRetry}
+                      />
+                    </td>
+                    <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">
+                      {new Date(o.timestamp).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <a
+                        href={`https://suiscan.xyz/${NETWORK}/tx/${o.txDigest}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 text-xs"
+                      >
+                        View ↗
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </section>
