@@ -1,8 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
-import { PACKAGE_ID, SHOP_OBJECT_ID, NETWORK, RPC_URLS } from '../config/constants';
+import { ORIGINAL_PACKAGE_ID, SHOP_OBJECT_ID, NETWORK, RPC_URLS } from '../config/constants';
 
 const rpc = new SuiJsonRpcClient({ url: RPC_URLS[NETWORK], network: NETWORK });
+
+function decodeField(val: number[] | string | unknown): string {
+  if (typeof val === 'string') return val;
+  if (Array.isArray(val)) return new TextDecoder().decode(new Uint8Array(val));
+  return '';
+}
 
 export interface OnChainProduct {
   id: number;
@@ -40,22 +46,24 @@ export function useShopProducts() {
           const df = await rpc.getDynamicFieldObject({
             parentId: SHOP_OBJECT_ID,
             name: {
-              type: `${PACKAGE_ID}::shop::ProductKey`,
+              type: `${ORIGINAL_PACKAGE_ID}::shop::ProductKey`,
               value: { product_id: String(i) },
             },
           });
 
-          const fields = (df.data?.content?.dataType === 'moveObject'
+          // Product data is nested under the dynamic field wrapper's value.fields
+          const outerFields = (df.data?.content?.dataType === 'moveObject'
             ? df.data.content.fields
             : null) as Record<string, any> | null;
+          const fields = (outerFields?.value?.fields ?? outerFields) as Record<string, any> | null;
 
           if (fields) {
             results.push({
               id: i,
-              name: String(fields.name ?? ''),
-              description: String(fields.description ?? ''),
+              name: decodeField(fields.name),
+              description: decodeField(fields.description),
               price: Number(fields.price ?? 0),
-              imageUrl: String(fields.image_url ?? ''),
+              imageUrl: decodeField(fields.image_url),
               active: Boolean(fields.active),
             });
           }

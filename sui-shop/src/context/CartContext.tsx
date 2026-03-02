@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import type { CartItem } from '../types';
-import { PRODUCTS } from '../config/constants';
+import { useShopProducts } from '../hooks/useShopProducts';
 
 interface CartContextType {
   items: CartItem[];
@@ -16,6 +16,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const { products } = useShopProducts();
 
   const addItem = useCallback((productId: number) => {
     setItems((prev) => {
@@ -54,7 +55,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const totalPrice = items.reduce((sum, item) => {
-    const product = PRODUCTS.find((p) => p.id === item.productId);
+    const product = products.find((p) => p.id === item.productId);
     return sum + (product ? product.price * item.quantity : 0);
   }, 0);
 
