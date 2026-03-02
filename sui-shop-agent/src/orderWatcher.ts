@@ -5,11 +5,13 @@ const EVENT_TYPE = `${ORIGINAL_PACKAGE_ID}::shop::OrderPlaced`;
 
 export interface OrderEvent {
   orderNumber: number;
+  productId: number;
   productName: string;
   price: number;
   timestamp: number;
   buyer: string;
   txDigest: string;
+  receiptId: string;
 }
 
 const recentOrders: OrderEvent[] = [];
@@ -36,11 +38,13 @@ async function initCursor(): Promise<void> {
         const fields = event.parsedJson as Record<string, any>;
         recentOrders.push({
           orderNumber: Number(fields?.order_number ?? 0),
+          productId: Number(fields?.product_id ?? 0),
           productName: decodeBytes(fields?.product_name ?? ''),
           price: Number(fields?.price ?? 0),
           timestamp: Number(fields?.timestamp ?? 0),
           buyer: String(fields?.buyer ?? ''),
           txDigest: event.id.txDigest,
+          receiptId: String(fields?.order_receipt_id ?? ''),
         });
       }
       // Cursor = most recent event — ongoing polls only catch new events
@@ -68,11 +72,13 @@ async function pollNewOrders(): Promise<void> {
       const fields = event.parsedJson as Record<string, any>;
       const order: OrderEvent = {
         orderNumber: Number(fields?.order_number ?? 0),
+        productId: Number(fields?.product_id ?? 0),
         productName: decodeBytes(fields?.product_name ?? ''),
         price: Number(fields?.price ?? 0),
         timestamp: Number(fields?.timestamp ?? 0),
         buyer: String(fields?.buyer ?? ''),
         txDigest: event.id.txDigest,
+        receiptId: String(fields?.order_receipt_id ?? ''),
       };
 
       console.log(`[orderWatcher] NEW ORDER #${order.orderNumber}: ${order.productName} (${order.buyer.slice(0, 10)}...)`);

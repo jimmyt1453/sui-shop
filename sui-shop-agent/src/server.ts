@@ -169,7 +169,8 @@ app.get('/api/balance/history', (_req, res) => {
 // ── GET /api/orders/recent ───────────────────────────────────────────────────
 app.get('/api/orders/recent', (req, res) => {
   const limit = Math.min(Math.max(1, Number(req.query.limit ?? 20)), 100);
-  res.json({ ok: true, orders: getRecentOrders().slice(0, limit), count: getRecentOrders().length });
+  const orders = getRecentOrders().slice(0, limit);
+  res.json({ ok: true, orders, count: getRecentOrders().length });
 });
 
 // ── Static files (production) ────────────────────────────────────────────────

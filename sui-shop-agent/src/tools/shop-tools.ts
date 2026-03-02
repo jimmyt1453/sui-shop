@@ -11,7 +11,74 @@ import {
   getUsdcType,
   formatUsdc,
   NETWORK,
+  type ProductInfo,
 } from '../config.js';
+
+// ===== Dynamic product cache =====
+interface CachedProducts {
+  products: ProductInfo[];
+  expiresAt: number;
+}
+let productCache: CachedProducts | null = null;
+
+function decodeField(val: number[] | string | unknown): string {
+  if (typeof val === 'string') return val;
+  if (Array.isArray(val)) return Buffer.from(val).toString('utf8');
+  return '';
+}
+
+async function fetchProductsFromChain(): Promise<ProductInfo[]> {
+  if (productCache && Date.now() < productCache.expiresAt) {
+    return productCache.products;
+  }
+
+  const client = getClient();
+  try {
+    const shopObj = await client.getObject({
+      id: SHOP_OBJECT_ID,
+      options: { showContent: true },
+    });
+    const shopFields = (shopObj.data?.content?.dataType === 'moveObject'
+      ? shopObj.data.content.fields
+      : null) as Record<string, any> | null;
+    const productCount = Number(shopFields?.product_count ?? 0);
+
+    const results: ProductInfo[] = [];
+    for (let i = 0; i < productCount; i++) {
+      try {
+        const df = await client.getDynamicFieldObject({
+          parentId: SHOP_OBJECT_ID,
+          name: {
+            type: `${ORIGINAL_PACKAGE_ID}::shop::ProductKey`,
+            value: { product_id: String(i) },
+          },
+        });
+        // Product data is nested under the dynamic field wrapper's value.fields
+        const outerFields = (df.data?.content?.dataType === 'moveObject'
+          ? df.data.content.fields
+          : null) as Record<string, any> | null;
+        const fields = (outerFields?.value?.fields ?? outerFields) as Record<string, any> | null;
+        if (fields) {
+          results.push({
+            id: i,
+            name: decodeField(fields.name),
+            description: decodeField(fields.description),
+            price: Number(fields.price ?? 0),
+            category: 'Digital',
+          });
+        }
+      } catch {
+        // product slot may not exist
+      }
+    }
+
+    productCache = { products: results, expiresAt: Date.now() + 60_000 };
+    return results;
+  } catch {
+    // Fall back to hardcoded list if chain is unreachable
+    return PRODUCTS;
+  }
+}
 
 // ===== Tool 1: List Products =====
 const listProductsTool = tool(
@@ -19,7 +86,8 @@ const listProductsTool = tool(
   'List all available products in Jimmy\'s SUI Shop with names, prices (in USDC), and IDs. Use this to find product IDs before purchasing.',
   {},
   async () => {
-    const productList = PRODUCTS.map(
+    const products = await fetchProductsFromChain();
+    const productList = products.map(
       (p) =>
         `ID: ${p.id} | ${p.name} | ${formatUsdc(p.price)} USDC | Category: ${p.category}`
     ).join('\n');
@@ -96,9 +164,10 @@ const purchaseTool = tool(
       const usdcType = getUsdcType();
 
       // Validate product IDs
+      const availableProducts = await fetchProductsFromChain();
       const purchases: Array<{ id: number; name: string; price: number }> = [];
       for (const pid of product_ids) {
-        const product = PRODUCTS.find((p) => p.id === pid);
+        const product = availableProducts.find((p) => p.id === pid);
         if (!product) {
           return {
             content: [
