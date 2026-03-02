@@ -18,11 +18,12 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import { shopMcpServer } from './tools/shop-tools.js';
+import { shopMcpServer, warmProductCache } from './tools/shop-tools.js';
 import { getAgentAddress } from './tools/sui-client.js';
 import { NETWORK } from './config.js';
 import { startOrderWatcher, getRecentOrders } from './orderWatcher.js';
 import { startBalanceTracker, getLatestBalance, getBalanceHistory } from './balanceTracker.js';
+import { getInventoryCounts, addCodes } from './inventoryStore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -34,14 +35,13 @@ You have access to tools that let you:
 3. **purchase** - Buy products by ID and send to an email address
 4. **order_history** - View past purchases
 
-When the user asks you to buy something:
-1. First, use list_products to find the correct product IDs
-2. Check the balance to ensure sufficient USDC
-3. Use the purchase tool with the product IDs and the user's email
-4. Report the result including the transaction link
-
-Always confirm what you're buying and the total cost before executing. All prices are in USDC.
-The agent has its own SUI wallet and pays autonomously.`;
+Guidelines:
+- Call list_products only if you don't already know the product ID
+- Call get_balance only if the user asks about funds or you need to verify sufficient balance
+- For conversational messages, respond directly without tools
+- When the user asks to buy something, find the product ID (using list_products if needed), then use the purchase tool with product IDs and email
+- Always confirm what you're buying and the total cost before executing
+- All prices are in USDC; the agent has its own SUI wallet and pays autonomously`;
 
 const app = express();
 const PORT = process.env.AGENT_PORT ? Number(process.env.AGENT_PORT) : 3001;
@@ -173,6 +173,23 @@ app.get('/api/orders/recent', (req, res) => {
   res.json({ ok: true, orders, count: getRecentOrders().length });
 });
 
+// ── GET /api/inventory ───────────────────────────────────────────────────────
+app.get('/api/inventory', (_req, res) => {
+  res.json({ ok: true, inventory: getInventoryCounts() });
+});
+
+// ── POST /api/inventory/:productId  — body: { codes: string[] } ──────────────
+app.post('/api/inventory/:productId', (req, res) => {
+  const { productId } = req.params;
+  const { codes } = req.body as { codes?: string[] };
+  if (!Array.isArray(codes) || codes.length === 0) {
+    res.status(400).json({ ok: false, error: 'codes array required' });
+    return;
+  }
+  addCodes(productId, codes.map(String));
+  res.json({ ok: true, inventory: getInventoryCounts() });
+});
+
 // ── Static files (production) ────────────────────────────────────────────────
 const webDistPath = path.join(__dirname, '..', 'web', 'dist');
 app.use(express.static(webDistPath));
@@ -194,4 +211,5 @@ app.listen(PORT, () => {
   console.log('');
   startOrderWatcher(10_000);
   startBalanceTracker(60_000);
+  warmProductCache();
 });
