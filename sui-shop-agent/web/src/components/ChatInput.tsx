@@ -37,37 +37,36 @@ export function ChatInput({ onSend, disabled }: Props) {
   };
 
   return (
-    <div className={[
-      'flex gap-3 items-end bg-slate-900/60 backdrop-blur-sm border rounded-2xl px-4 py-3 transition-all duration-200',
-      disabled
-        ? 'border-blue-500/30 shadow-[0_0_0_3px_rgba(99,102,241,0.1)] animate-pulse'
-        : 'border-slate-700/60 focus-within:border-blue-500/60 focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.12)]',
-    ].join(' ')}>
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onInput={handleInput}
-        placeholder="Ask about products, balances, or orders…"
-        disabled={disabled}
-        rows={1}
-        className="flex-1 bg-transparent text-slate-100 placeholder-slate-600 text-sm resize-none outline-none leading-relaxed disabled:opacity-50"
-        style={{ maxHeight: '160px' }}
-      />
-      <button
-        onClick={handleSend}
-        disabled={disabled || !value.trim()}
-        className="shrink-0 w-9 h-9 flex items-center justify-center bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 text-white rounded-xl transition-all duration-200 cursor-pointer disabled:cursor-not-allowed select-none shadow-md shadow-blue-500/20 disabled:shadow-none"
-      >
-        {disabled ? (
-          <span className="w-4 h-4 border-2 border-slate-600 border-t-blue-400 rounded-full animate-spin" />
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-            <path fillRule="evenodd" d="M10 17a.75.75 0 0 1-.75-.75V5.612L5.29 9.77a.75.75 0 0 1-1.08-1.04l5.25-5.5a.75.75 0 0 1 1.08 0l5.25 5.5a.75.75 0 1 1-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0 1 10 17Z" clipRule="evenodd" />
-          </svg>
-        )}
-      </button>
+    <div className="relative bg-black rounded-xl shadow-2xl input-wrapper">
+      <div className="input-glow"></div>
+      <div className={`relative border focus-within:border-gray-600 rounded-xl bg-black flex items-end p-2 transition-colors ${disabled ? 'border-gray-800' : 'border-subtle'}`}>
+        <div className="p-2.5 text-gray-500 shrink-0 cursor-default">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+        </div>
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onInput={handleInput}
+          placeholder="Message SuiPulse..."
+          disabled={disabled}
+          rows={1}
+          className="w-full bg-transparent px-2 py-2.5 text-[14px] text-white placeholder-gray-600 focus:outline-none resize-none disabled:opacity-50"
+          style={{ maxHeight: '160px' }}
+        />
+        <button
+          onClick={handleSend}
+          disabled={disabled || !value.trim()}
+          className="p-2 mb-0.5 mr-0.5 bg-white text-black rounded-lg hover:bg-gray-200 transition-all shadow-md shadow-white/10 shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {disabled ? (
+            <svg className="w-4 h-4 animate-spin text-black" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          ) : (
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

@@ -15,7 +15,7 @@ export interface ChatMessage {
   isError: boolean;
 }
 
-export function useChat() {
+export function useChat(onPurchaseComplete?: (text: string) => void) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   // Each browser session gets a stable UUID used to resume the Claude session.
@@ -41,6 +41,10 @@ export function useChat() {
       setIsLoading(true);
       const abort = new AbortController();
       abortRef.current = abort;
+
+      // Track purchase outcome outside setMessages updaters
+      let purchaseToolCalled = false;
+      let accumulatedText = '';
 
       try {
         const response = await fetch('/api/chat', {
@@ -78,6 +82,9 @@ export function useChat() {
               continue;
             }
 
+            if (event.type === 'tool' && event.name === 'purchase') purchaseToolCalled = true;
+            if (event.type === 'text') accumulatedText += event.content ?? '';
+
             setMessages((prev) =>
               prev.map((msg) => {
                 if (msg.id !== agentId) return msg;
@@ -100,6 +107,11 @@ export function useChat() {
             );
           }
         }
+
+        // Fire purchase callback if a purchase tool was called and succeeded
+        if (purchaseToolCalled && onPurchaseComplete) {
+          onPurchaseComplete(accumulatedText);
+        }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') return;
         setMessages((prev) =>
@@ -114,7 +126,7 @@ export function useChat() {
         abortRef.current = null;
       }
     },
-    [isLoading]
+    [isLoading, onPurchaseComplete]
   );
 
   const clearMessages = useCallback(async () => {

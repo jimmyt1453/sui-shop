@@ -30,7 +30,30 @@ export function useBalance() {
     try {
       const res = await fetch('/api/balance/history');
       const data = await res.json();
-      if (data.ok) setHistory(data.history);
+      if (data.ok) {
+        setHistory(data.history);
+        if (data.history.length > 0) {
+          setCurrent(data.history[data.history.length - 1]);
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const refreshBalance = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch('/api/balance/refresh', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        setHistory(data.history);
+        if (data.history.length > 0) {
+          setCurrent(data.history[data.history.length - 1]);
+        }
+      }
     } catch {
       // ignore
     } finally {
@@ -45,5 +68,5 @@ export function useBalance() {
     return () => clearInterval(interval);
   }, [fetchCurrent]);
 
-  return { current, history, loading, historyLoading, fetchHistory };
+  return { current, history, loading, historyLoading, fetchHistory, refreshBalance };
 }

@@ -13,6 +13,8 @@ import {
   NETWORK,
   type ProductInfo,
 } from '../config.js';
+import { getRecentOrders } from '../orderWatcher.js';
+import { getLatestBalance } from '../balanceTracker.js';
 
 // ===== Dynamic product cache =====
 interface CachedProducts {
@@ -43,41 +45,45 @@ async function fetchProductsFromChain(): Promise<ProductInfo[]> {
       : null) as Record<string, any> | null;
     const productCount = Number(shopFields?.product_count ?? 0);
 
-    const results: ProductInfo[] = [];
-    for (let i = 0; i < productCount; i++) {
-      try {
-        const df = await client.getDynamicFieldObject({
-          parentId: SHOP_OBJECT_ID,
-          name: {
-            type: `${ORIGINAL_PACKAGE_ID}::shop::ProductKey`,
-            value: { product_id: String(i) },
-          },
-        });
-        // Product data is nested under the dynamic field wrapper's value.fields
+    const fetches = Array.from({ length: productCount }, (_, i) =>
+      client.getDynamicFieldObject({
+        parentId: SHOP_OBJECT_ID,
+        name: {
+          type: `${ORIGINAL_PACKAGE_ID}::shop::ProductKey`,
+          value: { product_id: String(i) },
+        },
+      }).catch(() => null)
+    );
+    const dfObjects = await Promise.all(fetches);
+    const results: ProductInfo[] = dfObjects
+      .map((df, i) => {
+        if (!df) return null;
         const outerFields = (df.data?.content?.dataType === 'moveObject'
           ? df.data.content.fields
           : null) as Record<string, any> | null;
         const fields = (outerFields?.value?.fields ?? outerFields) as Record<string, any> | null;
-        if (fields) {
-          results.push({
-            id: i,
-            name: decodeField(fields.name),
-            description: decodeField(fields.description),
-            price: Number(fields.price ?? 0),
-            category: 'Digital',
-          });
-        }
-      } catch {
-        // product slot may not exist
-      }
-    }
+        if (!fields) return null;
+        return {
+          id: i,
+          name: decodeField(fields.name),
+          description: decodeField(fields.description),
+          price: Number(fields.price ?? 0),
+          category: 'Digital',
+        };
+      })
+      .filter((p): p is ProductInfo => p !== null);
 
-    productCache = { products: results, expiresAt: Date.now() + 60_000 };
+    productCache = { products: results, expiresAt: Date.now() + 300_000 };
     return results;
   } catch {
     // Fall back to hardcoded list if chain is unreachable
     return PRODUCTS;
   }
+}
+
+// Call at server startup to pre-populate cache before any user request
+export function warmProductCache(): void {
+  fetchProductsFromChain().catch(() => {});
 }
 
 // ===== Tool 1: List Products =====
@@ -111,18 +117,24 @@ const getBalanceTool = tool(
   {},
   async () => {
     try {
-      const client = getClient();
       const address = getAgentAddress();
-
-      // Get SUI balance
-      const suiBalance = await client.getBalance({ owner: address });
-
-      // Get USDC balance
-      const usdcBalance = await client.getBalance({
-        owner: address,
-        coinType: getUsdcType(),
-      });
-
+      const cached = getLatestBalance();
+      if (cached) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: `Agent Wallet: ${address}\nSUI Balance: ${(cached.suiBalance / 1e9).toFixed(4)} SUI\nUSDC Balance: ${formatUsdc(cached.usdcBalance)} USDC\nNetwork: ${NETWORK}`,
+            },
+          ],
+        };
+      }
+      // Tracker not yet run — fall back to live RPC
+      const client = getClient();
+      const [suiBalance, usdcBalance] = await Promise.all([
+        client.getBalance({ owner: address }),
+        client.getBalance({ owner: address, coinType: getUsdcType() }),
+      ]);
       return {
         content: [
           {
@@ -290,17 +302,10 @@ const orderHistoryTool = tool(
   {},
   async () => {
     try {
-      const client = getClient();
       const address = getAgentAddress();
-      const receiptType = `${ORIGINAL_PACKAGE_ID}::shop::OrderReceipt`;
+      const myOrders = getRecentOrders().filter((o) => o.buyer === address);
 
-      const result = await client.getOwnedObjects({
-        owner: address,
-        filter: { StructType: receiptType },
-        options: { showContent: true },
-      });
-
-      if (result.data.length === 0) {
+      if (myOrders.length === 0) {
         return {
           content: [
             { type: 'text' as const, text: 'No orders found. The agent has not made any purchases yet.' },
@@ -308,26 +313,10 @@ const orderHistoryTool = tool(
         };
       }
 
-      const orders = result.data
-        .map((item) => {
-          const content = item.data?.content;
-          const fields = (content?.dataType === 'moveObject'
-            ? content.fields
-            : {}) as Record<string, any>;
-          return {
-            orderNumber: Number(fields?.order_number || 0),
-            productName: String(fields?.product_name || 'Unknown'),
-            price: Number(fields?.price || 0),
-            email: String(fields?.email || ''),
-            timestamp: Number(fields?.timestamp || 0),
-          };
-        })
-        .sort((a, b) => b.timestamp - a.timestamp);
-
-      const orderList = orders
+      const orderList = myOrders
         .map(
           (o) =>
-            `  #${o.orderNumber} | ${o.productName} | ${formatUsdc(o.price)} USDC | ${new Date(o.timestamp).toLocaleString()} | ${o.email}`
+            `  #${o.orderNumber} | ${o.productName} | ${formatUsdc(o.price)} USDC | ${new Date(o.timestamp).toLocaleString()} | https://suiscan.xyz/${NETWORK}/tx/${o.txDigest}`
         )
         .join('\n');
 
@@ -335,7 +324,7 @@ const orderHistoryTool = tool(
         content: [
           {
             type: 'text' as const,
-            text: `Agent Order History (${orders.length} orders):\n\n${orderList}`,
+            text: `Agent Order History (${myOrders.length} orders):\n\n${orderList}`,
           },
         ],
       };
@@ -350,6 +339,117 @@ const orderHistoryTool = tool(
   },
   { annotations: { readOnly: true } }
 );
+
+// ===== Raw handler exports (used by direct Anthropic SDK agentic loop) =====
+
+export async function runListProducts(): Promise<string> {
+  const products = await fetchProductsFromChain();
+  const productList = products.map(
+    (p) => `ID: ${p.id} | ${p.name} | ${formatUsdc(p.price)} USDC | Category: ${p.category}`
+  ).join('\n');
+  return `Available products in Jimmy's SUI Shop:\n\n${productList}`;
+}
+
+export async function runGetBalance(): Promise<string> {
+  try {
+    const address = getAgentAddress();
+    const cached = getLatestBalance();
+    if (cached) {
+      return `Agent Wallet: ${address}\nSUI Balance: ${(cached.suiBalance / 1e9).toFixed(4)} SUI\nUSDC Balance: ${formatUsdc(cached.usdcBalance)} USDC\nNetwork: ${NETWORK}`;
+    }
+    const client = getClient();
+    const [suiBalance, usdcBalance] = await Promise.all([
+      client.getBalance({ owner: address }),
+      client.getBalance({ owner: address, coinType: getUsdcType() }),
+    ]);
+    return `Agent Wallet: ${address}\nSUI Balance: ${(Number(suiBalance.totalBalance) / 1e9).toFixed(4)} SUI\nUSDC Balance: ${formatUsdc(Number(usdcBalance.totalBalance))} USDC\nNetwork: ${NETWORK}`;
+  } catch (err: any) {
+    return `Error checking balance: ${err.message}`;
+  }
+}
+
+export async function runPurchase(args: { product_ids: number[]; email: string }): Promise<string> {
+  const { product_ids, email } = args;
+  try {
+    const client = getClient();
+    const keypair = getKeypair();
+    const address = getAgentAddress();
+    const usdcType = getUsdcType();
+
+    const availableProducts = await fetchProductsFromChain();
+    const purchases: Array<{ id: number; name: string; price: number }> = [];
+    for (const pid of product_ids) {
+      const product = availableProducts.find((p) => p.id === pid);
+      if (!product) {
+        return `Error: Product ID ${pid} not found. Use list_products to see available products.`;
+      }
+      purchases.push({ id: product.id, name: product.name, price: product.price });
+    }
+
+    const totalPrice = purchases.reduce((sum, p) => sum + p.price, 0);
+
+    const coinsResult = await client.getCoins({ owner: address, coinType: usdcType, limit: 50 });
+    if (coinsResult.data.length === 0) {
+      return `Error: No USDC coins found in agent wallet. Fund the wallet first.`;
+    }
+
+    const totalUsdc = coinsResult.data.reduce((sum, c) => sum + Number(c.balance), 0);
+    if (totalUsdc < totalPrice) {
+      return `Error: Insufficient USDC. Need ${formatUsdc(totalPrice)} USDC but only have ${formatUsdc(totalUsdc)} USDC.`;
+    }
+
+    const tx = new Transaction();
+    const coinIds = coinsResult.data.map((c) => c.coinObjectId);
+    const primaryCoin = tx.object(coinIds[0]);
+    if (coinIds.length > 1) {
+      tx.mergeCoins(primaryCoin, coinIds.slice(1).map((id) => tx.object(id)));
+    }
+
+    for (const purchase of purchases) {
+      const [paymentCoin] = tx.splitCoins(primaryCoin, [tx.pure.u64(purchase.price)]);
+      tx.moveCall({
+        target: `${PACKAGE_ID}::shop::purchase`,
+        typeArguments: [usdcType],
+        arguments: [
+          tx.object(SHOP_OBJECT_ID),
+          tx.pure.u64(purchase.id),
+          paymentCoin,
+          tx.pure.string(email),
+          tx.object(CLOCK_OBJECT_ID),
+        ],
+      });
+    }
+
+    const result = await client.signAndExecuteTransaction({ transaction: tx, signer: keypair });
+    if (result.errors && result.errors.length > 0) {
+      return `Purchase transaction failed! Errors: ${result.errors.join(', ')} (Digest: ${result.digest})`;
+    }
+
+    const itemsList = purchases.map((p) => `  - ${p.name} (${formatUsdc(p.price)} USDC)`).join('\n');
+    return `Purchase successful!\n\nItems purchased:\n${itemsList}\n\nTotal: ${formatUsdc(totalPrice)} USDC\nDelivery email: ${email}\nTransaction: https://suiscan.xyz/${NETWORK}/tx/${result.digest}`;
+  } catch (err: any) {
+    return `Purchase failed: ${err.message}`;
+  }
+}
+
+export async function runOrderHistory(): Promise<string> {
+  try {
+    const address = getAgentAddress();
+    const myOrders = getRecentOrders().filter((o) => o.buyer === address);
+
+    if (myOrders.length === 0) {
+      return 'No orders found. The agent has not made any purchases yet.';
+    }
+
+    const orderList = myOrders
+      .map((o) => `  #${o.orderNumber} | ${o.productName} | ${formatUsdc(o.price)} USDC | ${new Date(o.timestamp).toLocaleString()} | https://suiscan.xyz/${NETWORK}/tx/${o.txDigest}`)
+      .join('\n');
+
+    return `Agent Order History (${myOrders.length} orders):\n\n${orderList}`;
+  } catch (err: any) {
+    return `Error fetching orders: ${err.message}`;
+  }
+}
 
 // ===== Create MCP Server =====
 export const shopMcpServer = createSdkMcpServer({

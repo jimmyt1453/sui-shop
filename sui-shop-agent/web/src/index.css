@@ -1,2 +1,109 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+
+@theme {
+  --color-agent-blue: #3b82f6;
+  --color-agent-indigo: #6366f1;
+}
+
+@layer base {
+  *, ::after, ::before {
+    box-sizing: border-box;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: rgba(5, 5, 5, 0.85);
+    backdrop-filter: blur(20px);
+  }
+
+  .border-subtle { border-color: #1f1f1f; }
+  .bg-subtle { background-color: #0a0a0a; }
+  .bg-app { background-color: #050505; }
+  
+  .agent-gradient {
+    background: linear-gradient(135deg, var(--color-agent-blue) 0%, var(--color-agent-indigo) 100%);
+  }
+}
+
+body { 
+    background-color: #000000; 
+    color: #ededed;
+}
+
+/* SVG Grid Background */
+.svg-grid-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background-image: radial-gradient(circle at 50% 0%, #0a1128 0%, #000000 80%);
+    opacity: 0.6;
+}
+
+.grid-pattern {
+    width: 100vw;
+    height: 100vh;
+    opacity: 0.3;
+    mask-image: radial-gradient(ellipse at center, black 20%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse at center, black 20%, transparent 80%);
+    animation: panGrid 40s linear infinite;
+}
+
+@keyframes panGrid {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-40px); }
+}
+
+/* Thinking animation for SVG */
+.think-pulse circle {
+    animation: pulse-op 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.think-pulse circle:nth-child(2) { animation-delay: 0.2s; }
+.think-pulse circle:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes pulse-op {
+    0%, 100% { opacity: 1; r: 3; fill: #ededed;}
+    50% { opacity: 0.3; r: 2; fill: #666;}
+}
+
+/* Input glow */
+.input-glow {
+    position: absolute;
+    inset: -1px;
+    border-radius: 12px;
+    background: linear-gradient(90deg, #3b82f640, transparent, #10b98140);
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.input-wrapper:focus-within .input-glow {
+    opacity: 1;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

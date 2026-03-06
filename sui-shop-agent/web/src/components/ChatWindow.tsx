@@ -1,49 +1,46 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useChat } from '../hooks/useChat';
 import { useToast } from '../hooks/useToast';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
-import { ConfirmModal } from './ConfirmModal';
 import { ToastStack } from './Toast';
 
 const SUGGESTIONS: { icon: string; label: string; text: string; cardColor: string; iconBg: string }[] = [
   {
-    icon: '📋',
+    icon: '📦',
     label: 'Browse Products',
     text: 'What products are available?',
-    cardColor: 'bg-violet-500/10 border-violet-500/25 hover:border-violet-400/50 hover:bg-violet-500/15',
-    iconBg: 'bg-violet-500/20 text-violet-300',
+    cardColor: 'bg-black border-subtle hover:border-gray-600',
+    iconBg: 'bg-subtle text-white border-subtle',
   },
   {
     icon: '💰',
     label: 'Check Balance',
     text: 'Check the agent wallet balance',
-    cardColor: 'bg-emerald-500/10 border-emerald-500/25 hover:border-emerald-400/50 hover:bg-emerald-500/15',
-    iconBg: 'bg-emerald-500/20 text-emerald-300',
+    cardColor: 'bg-black border-subtle hover:border-gray-600',
+    iconBg: 'bg-subtle text-white border-subtle',
   },
   {
     icon: '📜',
     label: 'Order History',
     text: 'Show my order history',
-    cardColor: 'bg-amber-500/10 border-amber-500/25 hover:border-amber-400/50 hover:bg-amber-500/15',
-    iconBg: 'bg-amber-500/20 text-amber-300',
+    cardColor: 'bg-black border-subtle hover:border-gray-600',
+    iconBg: 'bg-subtle text-white border-subtle',
   },
   {
     icon: '🛒',
     label: 'Make a Purchase',
     text: 'Buy Steam Gift Card $10 and send to me@example.com',
-    cardColor: 'bg-blue-500/10 border-blue-500/25 hover:border-blue-400/50 hover:bg-blue-500/15',
-    iconBg: 'bg-blue-500/20 text-blue-300',
+    cardColor: 'bg-black border-subtle hover:border-gray-600',
+    iconBg: 'bg-subtle text-white border-subtle',
   },
 ];
 
 const QUICK_CHIPS: { icon: string; label: string; text: string }[] = [
-  { icon: '📋', label: 'Products', text: 'What products are available?' },
+  { icon: '📦', label: 'Products', text: 'What products are available?' },
   { icon: '💰', label: 'Balance', text: 'Check the agent wallet balance' },
   { icon: '📜', label: 'History', text: 'Show my order history' },
 ];
-
-const PURCHASE_INTENT = /\b(buy|purchase|checkout)\b/i;
 
 export function ChatWindow() {
   const { toasts, addToast, removeToast } = useToast();
@@ -58,97 +55,67 @@ export function ChatWindow() {
   };
 
   const { messages, isLoading, sendMessage, clearMessages } = useChat(handlePurchaseComplete);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
 
   // Scroll to bottom whenever messages update
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isLoading]);
 
   const handleSend = (text: string) => {
-    if (PURCHASE_INTENT.test(text)) {
-      setPendingMessage(text);
-    } else {
-      sendMessage(text);
-    }
-  };
-
-  const confirmPurchase = () => {
-    if (pendingMessage) {
-      sendMessage(pendingMessage);
-      setPendingMessage(null);
-    }
+    sendMessage(text);
   };
 
   return (
     <>
       <ToastStack toasts={toasts} onRemove={removeToast} />
 
-      {pendingMessage && (
-        <ConfirmModal
-          message={pendingMessage}
-          onConfirm={confirmPurchase}
-          onCancel={() => setPendingMessage(null)}
-        />
-      )}
-
-      <div className="flex flex-col flex-1 gap-4 min-h-0">
-        {/* Clear button above scroll area */}
-        {messages.length > 0 && (
-          <div className="flex justify-end shrink-0">
-            <button
-              onClick={clearMessages}
-              disabled={isLoading}
-              className="flex items-center gap-1 text-xs text-slate-600 hover:text-red-400 transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
-                <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
-              </svg>
-              Clear conversation
-            </button>
-          </div>
-        )}
-
+      <div className="flex flex-col flex-1 min-h-0 relative z-10">
         {/* Message list */}
-        <div className="flex-1 flex flex-col gap-4 overflow-y-auto min-h-0 pr-1">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-8 py-8 space-y-8 scroll-smooth no-scrollbar relative">
           {messages.length === 0 ? (
             /* Welcome screen */
-            <div className="relative flex flex-col items-center justify-center flex-1 gap-6 py-16 overflow-hidden">
-              {/* Radial glow background */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-80 h-80 bg-blue-600/8 rounded-full blur-3xl" />
-              </div>
-
-              {/* Multi-ring avatar */}
-              <div className="relative flex items-center justify-center">
-                <span className="absolute w-28 h-28 rounded-3xl bg-blue-500/8 motion-safe:animate-ping" style={{ animationDuration: '3s' }} />
-                <span className="absolute w-22 h-22 rounded-3xl bg-blue-500/12" style={{ width: '5.5rem', height: '5.5rem' }} />
-                <div className="relative w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-3xl select-none shadow-xl shadow-blue-500/30">
-                  🤖
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center animate-in fade-in duration-700">
+                <div className="relative w-24 h-24 mb-6">
+                    {/* Rotating dash ring */}
+                    <svg className="absolute inset-0 w-full h-full text-blue-500/20 animate-[spin_10s_linear_infinite]" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="4 8" />
+                    </svg>
+                    {/* Inner pulse ring */}
+                    <svg className="absolute inset-0 w-full h-full text-emerald-500/20" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" strokeWidth="1">
+                            <animate attributeName="r" values="35; 40; 35" dur="3s" repeatCount="indefinite" />
+                            <animate attributeName="opacity" values="1; 0.5; 1" dur="3s" repeatCount="indefinite" />
+                        </circle>
+                    </svg>
+                    {/* Center Logo */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-12 h-12 bg-white text-black rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+                            <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                    </div>
                 </div>
-              </div>
+                <h2 className="text-lg font-medium text-white tracking-tight">SuiPulse Initialized</h2>
+                <p className="text-sm text-gray-500 max-w-xs mt-2 mb-8 leading-relaxed">Securely connected. I can check balances, list inventory, and execute purchases.</p>
 
-              <div className="relative text-center">
-                <h2 className="text-xl font-bold text-white mb-1">Jimmy's SUI Shop Agent</h2>
-                <p className="text-slate-500 text-sm max-w-sm">
-                  I can browse products, check wallet balances, and make purchases on the SUI blockchain using natural language.
-                </p>
-              </div>
-
-              {/* 2×2 color-coded suggestion cards */}
-              <div className="relative grid grid-cols-2 gap-3 max-w-sm w-full px-4">
+              {/* 2×2 suggestion cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
                 {SUGGESTIONS.map((s) => (
                   <button
                     key={s.label}
                     onClick={() => handleSend(s.text)}
-                    className={`flex flex-col items-start gap-2 text-left border rounded-xl p-3 transition-all duration-200 cursor-pointer ${s.cardColor}`}
+                    className={`flex flex-col items-start gap-2 text-left border rounded-xl p-4 transition-all duration-300 cursor-pointer group ${s.cardColor}`}
                   >
-                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-base ${s.iconBg}`}>
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-transform group-hover:scale-110 ${s.iconBg}`}>
                       {s.icon}
                     </span>
-                    <span className="text-sm font-semibold text-white">{s.label}</span>
-                    <span className="text-xs text-slate-500 leading-snug">{s.text}</span>
+                    <div>
+                      <span className="text-[13px] font-medium text-gray-200 block">{s.label}</span>
+                      <span className="text-[11px] text-gray-500 leading-snug mt-1 line-clamp-2">{s.text}</span>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -158,36 +125,49 @@ export function ChatWindow() {
               {messages.map((msg) => (
                 <MessageBubble key={msg.id} message={msg} />
               ))}
-              <div ref={bottomRef} />
+              <div ref={bottomRef} className="h-4" />
             </>
           )}
         </div>
 
         {/* Input area */}
-        <div className="flex flex-col gap-2">
-          <ChatInput onSend={handleSend} disabled={isLoading} />
-
-          {/* Quick reply chips — shown after first message, while not loading */}
-          {messages.length > 0 && !isLoading && (
-            <div className="flex items-center gap-2 flex-wrap px-1">
-              {QUICK_CHIPS.map((chip) => (
+        <div className="p-4 sm:p-6 shrink-0 w-full relative z-20">
+            {/* Quick reply chips */}
+            {messages.length > 0 && !isLoading && (
+              <div className="flex items-center gap-2 flex-wrap mb-4 overflow-x-auto no-scrollbar">
+                {QUICK_CHIPS.map((chip) => (
+                  <button
+                    key={chip.label}
+                    onClick={() => handleSend(chip.text)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-black border border-subtle hover:border-gray-600 text-gray-400 hover:text-white text-[11px] font-medium rounded-full transition-all duration-200 cursor-pointer whitespace-nowrap active:scale-95"
+                  >
+                    <span>{chip.icon}</span>
+                    <span>{chip.label}</span>
+                  </button>
+                ))}
+                
                 <button
-                  key={chip.label}
-                  onClick={() => handleSend(chip.text)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/70 hover:bg-slate-700/70 border border-white/8 hover:border-white/15 text-slate-400 hover:text-slate-200 text-xs rounded-full transition-all duration-150 cursor-pointer"
+                  onClick={clearMessages}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-black hover:bg-gray-900 border border-subtle hover:border-red-900/50 text-gray-500 hover:text-red-400 text-[11px] font-medium rounded-full transition-all duration-200 cursor-pointer ml-auto"
                 >
-                  <span>{chip.icon}</span>
-                  <span>{chip.label}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
+                    <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
+                  </svg>
+                  Clear Session
                 </button>
-              ))}
-            </div>
-          )}
+              </div>
+            )}
 
-          {!isLoading && messages.length === 0 && (
-            <p className="text-center text-slate-700 text-xs">
-              Enter to send · Shift+Enter for new line
-            </p>
-          )}
+            <ChatInput onSend={handleSend} disabled={isLoading} />
+            
+            <div className="flex justify-center items-center mt-3 h-4">
+              {!isLoading && messages.length === 0 ? (
+                <span className="text-[10px] text-gray-600 font-mono flex items-center gap-1.5">
+                    <svg className="w-3 h-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                    Secure on-chain execution
+                </span>
+              ) : null}
+            </div>
         </div>
       </div>
     </>

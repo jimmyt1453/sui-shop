@@ -22,12 +22,12 @@ import { shopMcpServer, warmProductCache } from './tools/shop-tools.js';
 import { getAgentAddress } from './tools/sui-client.js';
 import { NETWORK } from './config.js';
 import { startOrderWatcher, getRecentOrders } from './orderWatcher.js';
-import { startBalanceTracker, getLatestBalance, getBalanceHistory } from './balanceTracker.js';
+import { startBalanceTracker, getLatestBalance, getBalanceHistory, sampleBalance } from './balanceTracker.js';
 import { getInventoryCounts, addCodes } from './inventoryStore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const SYSTEM_PROMPT = `You are a shopping assistant for Jimmy's SUI Shop, a digital goods marketplace on the SUI blockchain.
+const SYSTEM_PROMPT = `You are SuiPulse, a shopping assistant for Jimmy's SUI Shop, a digital goods marketplace on the SUI blockchain.
 
 You have access to tools that let you:
 1. **list_products** - See all available products with prices
@@ -166,6 +166,12 @@ app.get('/api/balance/history', (_req, res) => {
   res.json({ ok: true, history: getBalanceHistory() });
 });
 
+// ── POST /api/balance/refresh ────────────────────────────────────────────────
+app.post('/api/balance/refresh', async (_req, res) => {
+  await sampleBalance();
+  res.json({ ok: true, history: getBalanceHistory() });
+});
+
 // ── GET /api/orders/recent ───────────────────────────────────────────────────
 app.get('/api/orders/recent', (req, res) => {
   const limit = Math.min(Math.max(1, Number(req.query.limit ?? 20)), 100);
@@ -200,7 +206,7 @@ app.use((_req, res) => {
 
 // ── Start ────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`\n🤖 SUI Shop Agent Server → http://localhost:${PORT}`);
+  console.log(`\n🤖 SuiPulse Server → http://localhost:${PORT}`);
   console.log(`   Network : ${NETWORK}`);
   console.log(`   CLAUDECODE env: ${process.env.CLAUDECODE ?? '(not set)'}`);
   try {

@@ -10,7 +10,7 @@ export interface BalanceSnapshot {
 const history: BalanceSnapshot[] = [];
 let current: BalanceSnapshot | null = null;
 
-async function sampleBalance(): Promise<void> {
+export async function sampleBalance(): Promise<void> {
   try {
     const client = getClient();
     const address = getAgentAddress();
