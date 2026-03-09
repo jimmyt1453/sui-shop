@@ -108,6 +108,57 @@ npm run web            # Prod: build chat UI + serve everything from :3001
 
 ---
 
+## On-Chain vs Off-Chain
+
+Understanding what lives on the SUI blockchain versus what runs off-chain is key to understanding the trust model of this project.
+
+### On-Chain (SUI Move contract)
+
+| Component | Details |
+|---|---|
+| **Product catalog** | Products stored as dynamic fields on the `Shop` shared object. Admin can add/update/deactivate products via on-chain calls. |
+| **Payment processing** | USDC coin transferred directly to the merchant address inside the Move transaction — no escrow, no middleman. Change is refunded automatically. |
+| **Order receipts** | An `OrderReceipt` object is created and transferred to the buyer's wallet on every purchase. Contains order number, product name, price, buyer address, email, and timestamp. Serves as immutable proof of purchase. |
+| **Access control** | An `AdminCap` owned object gates all admin functions (add product, update price, deactivate product). Only the holder can call these. |
+| **Order events** | An `OrderPlaced` event is emitted per purchase and indexed by the SUI network. The off-chain order watcher subscribes to these events to trigger fulfillment. |
+
+### Off-Chain (Agent server + frontend)
+
+| Component | Why it's off-chain | File(s) |
+|---|---|---|
+| **Redemption codes** | Gift card codes must remain secret. The SUI blockchain is a public ledger — storing a code on-chain would expose it to every validator before the buyer claims it. | `sui-shop-agent/src/inventoryStore.ts` |
+| **Email delivery** | Move has no ability to make HTTP requests or send emails. An off-chain agent listens for `OrderPlaced` events and sends codes via SMTP. | `sui-shop-agent/src/orderWatcher.ts`, `sui-shop-agent/src/mailer.ts` |
+| **Product images & categories** | Large binary assets and UI metadata (images, category tags) are stored off-chain. The contract stores only a string image ID. | `sui-shop/src/config/constants.ts` |
+| **AI shopping agent** | The Claude-powered agent runs on Anthropic's servers. It has its own funded SUI wallet and calls on-chain functions autonomously, but the reasoning layer is off-chain. | `sui-shop-agent/src/` |
+| **Order history cache** | The last 100 orders are cached in memory for fast API responses. The canonical source of truth is always the on-chain events. | `sui-shop-agent/src/orderWatcher.ts` |
+
+### Purchase data flow
+
+```
+1. USER (browser)
+   Selects product → enters email → signs transaction in wallet
+
+2. ON-CHAIN (Move)
+   Validates product exists and is active
+   Verifies payment amount ≥ price
+   Transfers USDC to merchant address
+   Creates OrderReceipt → transfers to buyer wallet
+   Emits OrderPlaced event
+
+3. OFF-CHAIN (order watcher, every 10s)
+   Polls for new OrderPlaced events
+   Fetches buyer email from OrderReceipt object
+   Pops a redemption code from in-memory inventory
+   Sends email to buyer via SMTP
+```
+
+### What can and cannot move on-chain
+
+- **Can**: Product catalog (already on-chain), payment logic (already on-chain), order receipts (already on-chain), fulfillment status flags
+- **Cannot**: Redemption codes (public ledger = exposed secrets), email delivery (Move has no I/O), AI reasoning (off-chain by nature)
+
+---
+
 ## Setup
 
 ### Prerequisites
